@@ -1,6 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "searchfiles.h"
+//#include "searchfiles.h"
 #include <iostream>
 #include <ctime>
 #include <QThread>
@@ -35,17 +35,17 @@ MainWindow::~MainWindow() {
 
 void MainWindow::on_actionStart_triggered()
 {
-    //ui->t_edit->setText("Search in progress... Please wait...");
-    char path[260] = "/home";
-    std::ofstream fout;
-    fout.open ("files.txt");
-    SearchFiles s(path);
-    s.GetFilesListMapWrite (fout, path);
-    fout.close ();
+//    //ui->t_edit->setText("Search in progress... Please wait...");
+//    char path[260] = "/home";
+//    std::ofstream fout;
+//    fout.open ("files.txt");
+//    SearchFiles s(path);
+//    s.GetFilesListMapWrite (fout, path);
+//    fout.close ();
 
-    ui->t_edit->setText("");
+//    ui->t_edit->setText("");
 
-    c_dir_label->setText ("Count of dirs: " + QString::number(s.GetDirCount ()));
-    c_obj_label->setText ("Count of objects: " + QString::number (s.GetObjectCount ()));
+//    c_dir_label->setText ("Count of dirs: " + QString::number(s.GetDirCount ()));
+//    c_obj_label->setText ("Count of objects: " + QString::number (s.GetObjectCount ()));
 
 }

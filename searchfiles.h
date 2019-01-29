@@ -6,10 +6,18 @@
 #include <map>
 #include <algorithm>
 #include <fstream>
-
-#include <dirent.h>
-#include <sys/stat.h>
 #include <string.h>
+
+#if defined(_WIN32)
+    #include <windows.h>
+    #include <wincrypt.h>
+    #define MAX_LEN MAX_PATH
+#else
+    #include <dirent.h>
+    #include <sys/stat.h>
+    #define MAX_LEN PATH_MAX
+#endif
+
 
 enum SearchType {
     BY_NAME = 1,
@@ -19,26 +27,37 @@ enum SearchType {
 };
 
 class SearchFiles {
-    struct FileInfo{
-        char name[PATH_MAX];
-        char path[PATH_MAX];
-        char extension[PATH_MAX];
+    struct FileInfo {
+        char name[MAX_LEN];
+        char path[MAX_LEN];
+        char extension[MAX_LEN];
         unsigned size;
         time_t date;
         bool is_dir;
     };
-    char path_[PATH_MAX];												//root path
-    SearchType type_;														//type of sort
-    unsigned count_;													//count of sorted objects
-    unsigned c_dir_;													//count of dir and subdirs
-    void SetFileType(dirent* dir_obj, FileInfo& curr_file_info);
+    SearchType type_;
+    unsigned count_;
+    unsigned c_dir_;
+
+#if defined(_WIN32)
+    void SetFileExtension(const WIN32_FIND_DATAA& file_data, FileInfo& curr_file_data);
+#else
+    void SetFileExtension(dirent* dir_obj, FileInfo& curr_file_info);
+#endif
+
     void WriteNodeMap(std::ofstream& fout, FileInfo& node) const;
 public:
-    SearchFiles(char* path);
+    SearchFiles();
     ~SearchFiles();
     unsigned GetObjectCount() const;
     unsigned GetDirCount() const;
-    void GetFilesListMapWrite(std::ofstream& fout, char* path);
+
+#if defined(_WIN32)
+    void Index(std::ofstream& fout, LPTSTR path);
+#else
+    void Index(std::ofstream& fout, char* path);
+#endif
+
 };
 
 #endif // SERCHFILES_H
