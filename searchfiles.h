@@ -6,7 +6,8 @@
 #include <cstring>
 
 #if defined(_WIN32)
-    #include <windows.h>
+    #include <Windows.h>
+    #include <wchar.h>
     #define MAX_LEN MAX_PATH
 #else
     #include <dirent.h>
@@ -24,9 +25,16 @@ enum SearchType {
 
 class SearchFiles {
     struct FileInfo {
+    #if defined(_WIN32)
+        std::wstring name;
+        std::wstring path;
+        std::wstring extension;
+    #else
         char name[MAX_LEN];
         char path[MAX_LEN];
         char extension[MAX_LEN];
+    #endif
+
         unsigned size;
         time_t date;
         bool is_dir;
@@ -36,12 +44,12 @@ class SearchFiles {
     unsigned c_dir_;
 
 #if defined(_WIN32)
-    void SetFileExtension(const WIN32_FIND_DATAA& file_data, FileInfo& curr_file_data);
+    void SetFileExtension(const WIN32_FIND_DATAW& file_data, FileInfo& curr_file_data);
 #else
     void SetFileExtension(dirent* dir_obj, FileInfo& curr_file_info);
 #endif
 
-    void WriteNodeMap(std::ofstream& fout, FileInfo& node) const;
+    void WriteNodeMap(std::wofstream& fout, FileInfo& node) const;
 public:
     SearchFiles();
     ~SearchFiles();
@@ -49,7 +57,7 @@ public:
     unsigned GetDirCount() const;
 
 #if defined(_WIN32)
-    void Index(std::ofstream& fout, LPTSTR path);
+    void Index(std::wofstream& fout, std::wstring path);
 #else
     void Index(std::ofstream& fout, char* path);
 #endif

@@ -1,22 +1,21 @@
 #include "searchfiles.h"
 
 #if defined(_WIN32)
-void SearchFiles::Index(std::ofstream& fout, LPTSTR path) {
-    WIN32_FIND_DATAA file_data;
+void SearchFiles::Index(std::wofstream& fout, std::wstring path) {
+    WIN32_FIND_DATAW file_data;
     FileInfo curr_file_info;
-    strcat_s(path, MAX_PATH, "\\*.*");
-    HANDLE file = FindFirstFile(path, &file_data);
-    path[strlen(path) - strlen(strstr(path, "*.*"))] = '\0';
-
+    path += L"\\*.*";
+    HANDLE file = FindFirstFile(path.c_str(), &file_data);
+    path.resize(path.size() - 3);
     if (file != INVALID_HANDLE_VALUE) {
         do {
             //skip "." and ".."
-            if (strlen(file_data.cFileName) == 1 && strchr(file_data.cFileName, '.') != nullptr) {
+            if (wcslen(file_data.cFileName) == 1 && wcschr(file_data.cFileName, '.') != nullptr) {
                 if (FindNextFile(file, &file_data) == 0) {
                     break;
                 }
             }
-            if (strlen(file_data.cFileName) == 2 && strstr(file_data.cFileName, "..") != nullptr) {
+            if (wcslen(file_data.cFileName) == 2 && wcsstr(file_data.cFileName, L"..") != nullptr) {
                 if (FindNextFile(file, &file_data) == 0) {
                     break;
                 }
@@ -24,17 +23,19 @@ void SearchFiles::Index(std::ofstream& fout, LPTSTR path) {
 
             if (file_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
                 ++c_dir_;
-                strcat_s(path, MAX_PATH, file_data.cFileName);
+                path += file_data.cFileName;
                 Index(fout, path);
-                path[strlen(path) - strlen(file_data.cFileName) - 1] = '\0';
+                path.resize(path.size() - wcslen(file_data.cFileName) - 1);
             }
             //init fileinfo
-            strcpy_s(curr_file_info.name, MAX_PATH, file_data.cFileName);
-            strcpy_s(curr_file_info.path, MAX_PATH, path);
-            strcat_s(curr_file_info.path, MAX_PATH, curr_file_info.name);
-            curr_file_info.date = file_data.ftLastWriteTime.dwLowDateTime;	//date
-            SetFileExtension(file_data, curr_file_info);					//type
-            curr_file_info.size = file_data.nFileSizeLow;					//size
+            curr_file_info.name = file_data.cFileName;
+            curr_file_info.path = path + curr_file_info.name;
+            curr_file_info.date = file_data.ftLastWriteTime.dwLowDateTime;
+            curr_file_info.extension =  !(file_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ?
+                                            (curr_file_info.name.substr(curr_file_info.name.find_last_of('.') + 1) == curr_file_info.name ?
+                                                L"Unknown": curr_file_info.name.substr(curr_file_info.name.find_last_of('.') + 1)):
+                                        L"DIR";
+            curr_file_info.size = file_data.nFileSizeLow;
 
             ++count_;
             WriteNodeMap(fout, curr_file_info);
@@ -84,30 +85,30 @@ void SearchFiles::Index(std::ofstream& fout, char* path) {
 
 
 #if defined(_WIN32)
-void SearchFiles::SetFileExtension(const WIN32_FIND_DATAA& file_data, FileInfo& curr_file_info) {
+void SearchFiles::SetFileExtension(const WIN32_FIND_DATAW& file_data, FileInfo& curr_file_info) {
     if (file_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-        strcpy_s(curr_file_info.extension, "DIR");
+        curr_file_info.extension = L"DIR";
         curr_file_info.is_dir = true;
     }
     else {
         size_t j = 0;
-        size_t i = strlen(file_data.cFileName) - 1;
+        size_t i = wcslen(file_data.cFileName) - 1;
         while (file_data.cFileName[i] != '.' && i) {
             curr_file_info.extension[j] = file_data.cFileName[i];
             ++j;
             --i;
         }
         if(!i) {
-            strcpy_s(curr_file_info.extension, "Unknown");
+            curr_file_info.extension = L"Unknown";
         }
         else {
             curr_file_info.extension[j] = '\0';
 
-            if (strlen(curr_file_info.extension)) {
-                i = strlen(curr_file_info.extension) - 1;
+            if (curr_file_info.extension.size()) {
+                i = curr_file_info.extension.size() - 1;
                 j = 0;
                 while (i > j) {
-                    char tmp = curr_file_info.extension[i];
+                    wchar_t tmp = curr_file_info.extension[i];
                     curr_file_info.extension[i] = curr_file_info.extension[j];
                     curr_file_info.extension[j] = tmp;
                     --i;
@@ -159,7 +160,7 @@ SearchFiles::SearchFiles() : type_(BY_NAME), count_(0), c_dir_(1) {}
 
 SearchFiles::~SearchFiles() {}
 
-void SearchFiles::WriteNodeMap(std::ofstream& fout, FileInfo& node) const {
+void SearchFiles::WriteNodeMap(std::wofstream& fout, FileInfo& node) const {
     if (fout.is_open()) {
 #if defined(_WIN32)
         fout << "Object Name: \t" << node.name <<
