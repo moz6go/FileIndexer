@@ -1,16 +1,12 @@
 #ifndef SERCHFILES_H
 #define SERCHFILES_H
 
-#include <vector>
 #include <string>
-#include <map>
-#include <algorithm>
 #include <fstream>
-#include <string.h>
+#include <cstring>
 
 #if defined(_WIN32)
     #include <windows.h>
-    #include <wincrypt.h>
     #define MAX_LEN MAX_PATH
 #else
     #include <dirent.h>

@@ -1,32 +1,62 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-//#include "searchfiles.h"
+#include "searchfiles.h"
 #include <iostream>
-#include <ctime>
-#include <QThread>
-
-class StartThread: public QThread {
-    void run() {
-
-    }
-};
-
+#include <QtWidgets>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
-    search_line = new QLineEdit(this);
-    c_dir_label = new QLabel(this);
-    c_obj_label = new QLabel(this);
+    sb_info = new QLabel(this);
+    table_view = new QTableView(this);
+    tree_view = new QTreeView(this);
+    h_main_loyout = new QHBoxLayout(this);
+    h_main_loyout->addWidget (table_view);
+    h_main_loyout->addWidget (tree_view);
+    sb_info->setFrameStyle (QFrame::StyledPanel & QFrame::Plain);
+    ui->statusBar->addWidget (sb_info);
+    SwitchButtons (DEFAULT);
 
-    ui->toolBar->addWidget (search_line);
-    ui->actionStop->setDisabled (true);
-    ui->actionPause->setDisabled (true);
-    ui->statusBar->addWidget (c_dir_label);
-    ui->statusBar->addWidget (c_obj_label);
-    //QWidget* wgt = new QWidget(this);
-    //wgt->setLayout (ui->h_main_loyout);
-    setCentralWidget (ui->t_edit);
+    QWidget* wgt = new QWidget(this);
+    wgt->setLayout (h_main_loyout);
+    setCentralWidget (wgt);
 
+    QObject::connect (&s_indx, SIGNAL(indx_ends(QString)), sb_info, SLOT(setText(QString)));
+    QObject::connect (&s_indx, SIGNAL(finished()), this, SLOT(ActionsAfterIndexing()));
+
+}
+
+void MainWindow::SwitchButtons(Process proc){
+    switch(proc){
+    case DEFAULT:
+        ui->actionStart->setEnabled (true);
+        ui->actionStop->setDisabled (true);
+        ui->actionPause->setDisabled (true);
+        ui->actionSearch->setEnabled (true);
+        break;
+    case START:
+        ui->actionStart->setDisabled (true);
+        ui->actionStop->setEnabled (true);
+        ui->actionPause->setEnabled (true);
+        ui->actionSearch->setDisabled (true);
+        break;
+    case STOP:
+        ui->actionStart->setEnabled (true);
+        ui->actionStop->setDisabled (true);
+        ui->actionPause->setEnabled (true);
+        ui->actionSearch->setEnabled (true);
+        break;
+    case PAUSE:
+        ui->actionStart->setEnabled (true);
+        ui->actionStop->setEnabled (true);
+        ui->actionPause->setDisabled (true);
+        ui->actionSearch->setDisabled (true);
+        break;
+    case SEARCH:
+        ui->actionStart->setDisabled (true);
+        ui->actionStop->setDisabled (true);
+        ui->actionPause->setDisabled (true);
+        ui->actionSearch->setDisabled (true);
+    }
 }
 
 MainWindow::~MainWindow() {
@@ -35,17 +65,23 @@ MainWindow::~MainWindow() {
 
 void MainWindow::on_actionStart_triggered()
 {
-//    //ui->t_edit->setText("Search in progress... Please wait...");
-//    char path[260] = "/home";
-//    std::ofstream fout;
-//    fout.open ("files.txt");
-//    SearchFiles s(path);
-//    s.GetFilesListMapWrite (fout, path);
-//    fout.close ();
+    SwitchButtons(START);
+    sb_info->setText("Indexing... Please wait...");
+    s_indx.start ();
+}
 
-//    ui->t_edit->setText("");
+void MainWindow::on_actionPause_triggered() {
 
-//    c_dir_label->setText ("Count of dirs: " + QString::number(s.GetDirCount ()));
-//    c_obj_label->setText ("Count of objects: " + QString::number (s.GetObjectCount ()));
+}
 
+void MainWindow::on_actionStop_triggered() {
+
+}
+
+void MainWindow::on_actionSearch_triggered() {
+
+}
+
+void MainWindow::ActionsAfterIndexing(){
+    SwitchButtons(DEFAULT);
 }

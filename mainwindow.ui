@@ -6,9 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>566</width>
-    <height>360</height>
+    <width>600</width>
+    <height>500</height>
    </rect>
+  </property>
+  <property name="font">
+   <font>
+    <family>Ubuntu</family>
+   </font>
   </property>
   <property name="windowTitle">
    <string>File Indexer</string>
@@ -17,18 +22,7 @@
    <iconset resource="img.qrc">
     <normaloff>:/buttons/resources/search.png</normaloff>:/buttons/resources/search.png</iconset>
   </property>
-  <widget class="QWidget" name="centralWidget">
-   <widget class="QTextEdit" name="t_edit">
-    <property name="geometry">
-     <rect>
-      <x>50</x>
-      <y>40</y>
-      <width>104</width>
-      <height>70</height>
-     </rect>
-    </property>
-   </widget>
-  </widget>
+  <widget class="QWidget" name="centralWidget"/>
   <widget class="QStatusBar" name="statusBar"/>
   <widget class="QToolBar" name="toolBar">
    <property name="windowTitle">
