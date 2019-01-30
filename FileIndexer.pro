@@ -15,10 +15,12 @@ CONFIG += c++11
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    searchfiles.cpp
+    searchfiles.cpp \
+    controller.cpp
 
 HEADERS  += mainwindow.h \
-    searchfiles.h
+    searchfiles.h \
+    controller.h
 
 FORMS    += mainwindow.ui
 

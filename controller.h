@@ -5,20 +5,25 @@
 #include <QThread>
 #include "searchfiles.h"
 
-class StartThread : public QThread {
-    Q_OBJECT
+class Observer {
 public:
-    void run();
-signals:
-    void indx_ends(QString);
+    int CheckStatus();
 };
 
+class StartThread : public QThread {
+    Q_OBJECT
+    SearchFiles* s_ptr_;
+public:
+    StartThread (SearchFiles* ptr);
+    void run();
+};
 
 class StopThread : public QThread {
     Q_OBJECT
+    SearchFiles* s_ptr_;
 public:
+    StopThread (SearchFiles* ptr);
     void run();
 };
-
 
 #endif // CONTROLLER_H

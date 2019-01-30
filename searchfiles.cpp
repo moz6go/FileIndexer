@@ -1,7 +1,11 @@
 #include "searchfiles.h"
 
+SearchFiles::SearchFiles() : type_(BY_NAME), count_(0), c_dir_(1) {}
+
+SearchFiles::~SearchFiles() {}
+
 #if defined(_WIN32)
-void SearchFiles::Index(std::wofstream& fout, std::wstring path) {
+void SearchFiles::Index(ofstream_t& fout, string_t path) {
     WIN32_FIND_DATAW file_data;
     FileInfo curr_file_info;
     path += L"\\*.*";
@@ -45,36 +49,40 @@ void SearchFiles::Index(std::wofstream& fout, std::wstring path) {
 }
 
 #else
-void SearchFiles::Index(std::ofstream& fout, char* path) {
+void SearchFiles::Index(ofstream_t& fout, string_t path) {
     DIR *dir;
     struct dirent *dir_obj;
     struct stat file_info;
     FileInfo curr_file_info;
-    char temp_path[PATH_MAX];
-    strcat(path, "/");
+    string_t temp_path;
+    path.push_back ('/');
 
-    if ((dir = opendir(path)) != NULL) {
-        if (path[strlen(path) - 1] != '/') strcat(path, "/");
+    if ((dir = opendir(path.c_str ())) != NULL) {
+        if (path.back ()!= '/') path.push_back ('/');
         while ((dir_obj = readdir(dir)) != NULL) {
             if (strcmp(".", dir_obj->d_name) == 0 || strcmp("..", dir_obj->d_name) == 0 || dir_obj->d_name[0] == '.') {
                 continue;
             }
-            strcpy(temp_path, path);
-            strcat(temp_path, dir_obj->d_name);
+            temp_path = path;
+            temp_path += dir_obj->d_name;
+            stat(temp_path.c_str (), &file_info);
             if (!(dir_obj->d_type ^ DT_DIR)) {
                 ++c_dir_;
-                strcat(path, dir_obj->d_name);
+                path += dir_obj->d_name;
                 Index(fout, path);
-                path[strlen(path) - strlen(dir_obj->d_name) - 1] = '\0';;
+                path.resize(path.size() - strlen(dir_obj->d_name));
             }
             //init fileinfo
-            strcpy(curr_file_info.name, dir_obj->d_name);
-            strcat(strcpy(curr_file_info.path, path), curr_file_info.name);
-            curr_file_info.date = file_info.st_mtim.tv_sec;
-            SetFileExtension(dir_obj, curr_file_info);
-            curr_file_info.size = !strcmp(curr_file_info.extension, "DIR") ? 0 : file_info.st_size;
 
-            temp_path[0] = '\0';
+            curr_file_info.name = dir_obj->d_name;
+            curr_file_info.path = path + curr_file_info.name;
+            curr_file_info.date = file_info.st_mtim.tv_sec;
+            curr_file_info.extension =  !(!(dir_obj->d_type ^ DT_DIR) || dir_obj->d_name[0] == '.') ?
+                                            (curr_file_info.name.substr(curr_file_info.name.find_last_of('.') + 1) == curr_file_info.name ?
+                                                "Unknown": curr_file_info.name.substr(curr_file_info.name.find_last_of('.') + 1)):
+                                        "DIR";
+            curr_file_info.size = curr_file_info.extension == "DIR" ? 0 : file_info.st_size;
+            temp_path.clear ();
             ++count_;
             WriteNodeMap(fout, curr_file_info);
         }
@@ -83,84 +91,7 @@ void SearchFiles::Index(std::ofstream& fout, char* path) {
 }
 #endif
 
-
-#if defined(_WIN32)
-void SearchFiles::SetFileExtension(const WIN32_FIND_DATAW& file_data, FileInfo& curr_file_info) {
-    if (file_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-        curr_file_info.extension = L"DIR";
-        curr_file_info.is_dir = true;
-    }
-    else {
-        size_t j = 0;
-        size_t i = wcslen(file_data.cFileName) - 1;
-        while (file_data.cFileName[i] != '.' && i) {
-            curr_file_info.extension[j] = file_data.cFileName[i];
-            ++j;
-            --i;
-        }
-        if(!i) {
-            curr_file_info.extension = L"Unknown";
-        }
-        else {
-            curr_file_info.extension[j] = '\0';
-
-            if (curr_file_info.extension.size()) {
-                i = curr_file_info.extension.size() - 1;
-                j = 0;
-                while (i > j) {
-                    wchar_t tmp = curr_file_info.extension[i];
-                    curr_file_info.extension[i] = curr_file_info.extension[j];
-                    curr_file_info.extension[j] = tmp;
-                    --i;
-                    ++j;
-                }
-            }
-        }
-        curr_file_info.is_dir = false;
-    }
-}
-
-#else
-void SearchFiles::SetFileExtension(dirent* dir_obj, FileInfo& curr_file_info) {
-    if (!(dir_obj->d_type ^ DT_DIR) || dir_obj->d_name[0] == '.') {
-        strcpy(curr_file_info.extension, "DIR");
-        curr_file_info.is_dir = true;
-    }
-    else {
-        size_t j = 0;
-        size_t i = strlen(dir_obj->d_name) - 1;
-        while (dir_obj->d_name[i] != '.' && i) {
-            curr_file_info.extension[j] = dir_obj->d_name[i];
-            ++j;
-            --i;
-        }
-        if(!i) {
-            strcpy(curr_file_info.extension, "Unknown");
-        }
-        else {
-            curr_file_info.extension[j] = '\0';
-            if (strlen(curr_file_info.extension)) {
-                i = strlen(curr_file_info.extension) - 1;
-                j = 0;
-                while (i > j) {
-                    char tmp = curr_file_info.extension[i];
-                    curr_file_info.extension[i] = curr_file_info.extension[j];
-                    curr_file_info.extension[j] = tmp;
-                    --i;
-                    ++j;
-                }
-            }
-        }
-        curr_file_info.is_dir = false;
-    }
-}
-#endif
-
-SearchFiles::SearchFiles() : type_(BY_NAME), count_(0), c_dir_(1) {}
-
-SearchFiles::~SearchFiles() {}
-
-void SearchFiles::WriteNodeMap(std::wofstream& fout, FileInfo& node) const {
+void SearchFiles::WriteNodeMap(ofstream_t& fout, FileInfo& node) const {
     if (fout.is_open()) {
 #if defined(_WIN32)
         fout << "Object Name: \t" << node.name <<
@@ -168,7 +99,6 @@ void SearchFiles::WriteNodeMap(std::wofstream& fout, FileInfo& node) const {
             "\nObject Date: \t" << node.date <<
             "\nObject Extension: \t" << node.extension <<
             "\nObject Size: \t" << node.size << "\n\n";
-
 #else
         char str_date[20];
         strftime(str_date, 20, "%Y-%m-%d %H:%M:%S", localtime(&node.date));

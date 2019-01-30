@@ -1,10 +1,11 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "searchfiles.h"
+
 #include <iostream>
 #include <QtWidgets>
 
-MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
+MainWindow::MainWindow(SearchFiles* s_ptr, QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
+    s_ptr_ = s_ptr;
     ui->setupUi(this);
     sb_info = new QLabel(this);
     table_view = new QTableView(this);
@@ -16,13 +17,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->statusBar->addWidget (sb_info);
     SwitchButtons (DEFAULT);
 
+    start_thread = new StartThread(s_ptr_);
+    stop_thread = new StopThread(s_ptr_);
+
     QWidget* wgt = new QWidget(this);
     wgt->setLayout (h_main_loyout);
     setCentralWidget (wgt);
 
-    QObject::connect (&s_indx, SIGNAL(indx_ends(QString)), sb_info, SLOT(setText(QString)));
-    QObject::connect (&s_indx, SIGNAL(finished()), this, SLOT(ActionsAfterIndexing()));
-
+    QObject::connect (start_thread, SIGNAL(finished()), this, SLOT(ActionsAfterIndexing()));
 }
 
 void MainWindow::SwitchButtons(Process proc){
@@ -61,13 +63,14 @@ void MainWindow::SwitchButtons(Process proc){
 
 MainWindow::~MainWindow() {
     delete ui;
+    delete start_thread;
 }
 
 void MainWindow::on_actionStart_triggered()
 {
     SwitchButtons(START);
     sb_info->setText("Indexing... Please wait...");
-    s_indx.start ();
+    start_thread->start ();
 }
 
 void MainWindow::on_actionPause_triggered() {
@@ -75,7 +78,9 @@ void MainWindow::on_actionPause_triggered() {
 }
 
 void MainWindow::on_actionStop_triggered() {
-
+    SwitchButtons(STOP);
+    sb_info->setText("Indexing was stopped!");
+    stop_thread->start ();
 }
 
 void MainWindow::on_actionSearch_triggered() {
@@ -84,4 +89,6 @@ void MainWindow::on_actionSearch_triggered() {
 
 void MainWindow::ActionsAfterIndexing(){
     SwitchButtons(DEFAULT);
+    sb_info->setText ("Count of dirs: " + QString::number(s_ptr_->GetDirCount ()) +
+                      "\tCount of objects: " + QString::number (s_ptr_->GetObjectCount ()));
 }
