@@ -5,25 +5,19 @@
 #include <QThread>
 #include "searchfiles.h"
 
-class Observer {
-public:
-    int CheckStatus();
-};
-
-class StartThread : public QThread {
+class Controller : public QObject {
     Q_OBJECT
     SearchFiles* s_ptr_;
 public:
-    StartThread (SearchFiles* ptr);
-    void run();
-};
-
-class StopThread : public QThread {
-    Q_OBJECT
-    SearchFiles* s_ptr_;
-public:
-    StopThread (SearchFiles* ptr);
-    void run();
+    Controller (SearchFiles* s_ptr);
+public slots:
+    void onStartButtonClick();
+    void onStopButtonClick();
+    void onPauseButtonClick();
+    void onSearchButtonClick();
+signals:
+    void paused (QString);
+    void finished();
 };
 
 #endif // CONTROLLER_H

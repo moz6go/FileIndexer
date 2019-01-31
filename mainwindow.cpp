@@ -1,8 +1,9 @@
-#include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "mainwindow.h"
 
 #include <iostream>
 #include <QtWidgets>
+
 
 MainWindow::MainWindow(SearchFiles* s_ptr, QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     s_ptr_ = s_ptr;
@@ -17,14 +18,9 @@ MainWindow::MainWindow(SearchFiles* s_ptr, QWidget *parent) : QMainWindow(parent
     ui->statusBar->addWidget (sb_info);
     SwitchButtons (DEFAULT);
 
-    start_thread = new StartThread(s_ptr_);
-    stop_thread = new StopThread(s_ptr_);
-
     QWidget* wgt = new QWidget(this);
     wgt->setLayout (h_main_loyout);
     setCentralWidget (wgt);
-
-    QObject::connect (start_thread, SIGNAL(finished()), this, SLOT(ActionsAfterIndexing()));
 }
 
 void MainWindow::SwitchButtons(Process proc){
@@ -63,24 +59,51 @@ void MainWindow::SwitchButtons(Process proc){
 
 MainWindow::~MainWindow() {
     delete ui;
-    delete start_thread;
 }
 
 void MainWindow::on_actionStart_triggered()
 {
-    SwitchButtons(START);
-    sb_info->setText("Indexing... Please wait...");
-    start_thread->start ();
-}
+    if (s_ptr_->Check () == PAUSE){
+        s_ptr_->SetState (DEFAULT);
+    }
+    else{
+        SwitchButtons(START);
+        sb_info->setText("Indexing... Please wait...");
+        QThread* start_thread = new QThread;
+        Controller* contr = new Controller(s_ptr_);
+        contr->moveToThread (start_thread);
 
-void MainWindow::on_actionPause_triggered() {
+        QObject::connect(start_thread, SIGNAL(started()), contr, SLOT(onStartButtonClick()));
+        QObject::connect(contr, SIGNAL(finished()), this, SLOT(ActionsAfterIndexing()));
 
+        start_thread->start ();
+    }
 }
 
 void MainWindow::on_actionStop_triggered() {
     SwitchButtons(STOP);
-    sb_info->setText("Indexing was stopped!");
+
+    QThread* stop_thread = new QThread;
+    Controller* contr = new Controller(s_ptr_);
+    contr->moveToThread (stop_thread);
+
+    QObject::connect(stop_thread, SIGNAL(started()), contr, SLOT(onStopButtonClick()));
+    QObject::connect(contr, SIGNAL(finished()), this, SLOT(ActionsAfterIndexing()));
+
     stop_thread->start ();
+}
+
+void MainWindow::on_actionPause_triggered() {
+    SwitchButtons(PAUSE);
+
+    QThread* pause_thread = new QThread;
+    Controller* contr = new Controller(s_ptr_);
+    contr->moveToThread (pause_thread);
+
+    QObject::connect(pause_thread, SIGNAL(started()), contr, SLOT(onPauseButtonClick()));
+    QObject::connect(contr, SIGNAL(paused(QString)), sb_info, SLOT(setText(QString)));
+
+    pause_thread->start ();
 }
 
 void MainWindow::on_actionSearch_triggered() {

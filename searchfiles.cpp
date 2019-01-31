@@ -1,6 +1,6 @@
 #include "searchfiles.h"
 
-SearchFiles::SearchFiles() : type_(BY_NAME), count_(0), c_dir_(1) {}
+SearchFiles::SearchFiles() : type_(BY_NAME), count_(0), c_dir_(1)  {}
 
 SearchFiles::~SearchFiles() {}
 
@@ -29,7 +29,7 @@ void SearchFiles::Index(ofstream_t& fout, string_t path) {
                 ++c_dir_;
                 path += file_data.cFileName;
                 Index(fout, path);
-                path.resize(path.size() - wcslen(file_data.cFileName) - 1);
+                path.resize(path.size() - wcslen(file_data.cFileName));
             }
             //init fileinfo
             curr_file_info.name = file_data.cFileName;
@@ -42,7 +42,19 @@ void SearchFiles::Index(ofstream_t& fout, string_t path) {
             curr_file_info.size = file_data.nFileSizeLow;
 
             ++count_;
-            WriteNodeMap(fout, curr_file_info);
+            WriteNode(fout, curr_file_info);
+
+            switch(state_){
+            case STOP:
+                return;
+                break;
+            case PAUSE:
+                while (state_ == PAUSE) {} //need to rework... CPU usage up to 100%...
+                state_ = DEFAULT;
+                break;
+            }
+
+
         } while (FindNextFile(file, &file_data) != 0);
         FindClose(file);
     }
@@ -84,20 +96,30 @@ void SearchFiles::Index(ofstream_t& fout, string_t path) {
             curr_file_info.size = curr_file_info.extension == "DIR" ? 0 : file_info.st_size;
             temp_path.clear ();
             ++count_;
-            WriteNodeMap(fout, curr_file_info);
+            WriteNode(fout, curr_file_info);
+
+            switch(state_){
+            case STOP:
+                return;
+                break;
+            case PAUSE:
+                while (state_ == PAUSE) {} //need to rework... CPU usage up to 100%...
+                break;
+            }
         }
         closedir(dir);
     }
 }
 #endif
 
-void SearchFiles::WriteNodeMap(ofstream_t& fout, FileInfo& node) const {
+void SearchFiles::WriteNode(ofstream_t& fout, FileInfo& node) const {
+
     if (fout.is_open()) {
 #if defined(_WIN32)
         fout << "Object Name: \t" << node.name <<
             "\nObject Path: \t" << node.path <<
             "\nObject Date: \t" << node.date <<
-            "\nObject Extension: \t" << node.extension <<
+            "\nObject Ext: \t" << node.extension <<
             "\nObject Size: \t" << node.size << "\n\n";
 #else
         char str_date[20];
@@ -105,7 +127,7 @@ void SearchFiles::WriteNodeMap(ofstream_t& fout, FileInfo& node) const {
         fout << "Object Name: \t" << node.name <<
             "\nObject Path: \t" << node.path <<
             "\nObject Date: \t" << str_date <<
-            "\nObject Extension: \t" << node.extension <<
+            "\nObject Ext: \t" << node.extension <<
             "\nObject Size: \t" << node.size << "\n\n";
 #endif
     }
@@ -119,3 +141,11 @@ unsigned SearchFiles::GetDirCount() const {
     return c_dir_;
 }
 
+void SearchFiles::SetCount(unsigned c_dir, unsigned c_obj) {
+    c_dir_ = c_dir;
+    count_ = c_obj;
+}
+
+void SearchFiles::Stop(bool stop) {
+    stop_ = stop;
+}

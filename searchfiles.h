@@ -2,13 +2,15 @@
 #define SERCHFILES_H
 
 #include <string>
-#include <fstream>
 #include <cstring>
+#include <fstream>
+#include "myenums.h"
+#include "statechecker.h"
 
 #if defined(_WIN32)
     #include <Windows.h>
     #include <wchar.h>
-    typedef std::wstring string_t
+    typedef std::wstring string_t;
     typedef std::wofstream ofstream_t;
 #else
     #include <dirent.h>
@@ -17,15 +19,7 @@
     typedef std::ofstream ofstream_t;
 #endif
 
-
-enum SearchType {
-    BY_NAME = 1,
-    BY_EXTANSION,
-    BY_DATE,
-    BY_SIZE
-};
-
-class SearchFiles {
+class SearchFiles : public StateChecker {
     struct FileInfo {
         string_t name;
         string_t path;
@@ -34,16 +28,19 @@ class SearchFiles {
         time_t date;
         bool is_dir;
     };
+    bool stop_;
     SearchType type_;
     unsigned count_;
     unsigned c_dir_;
-    void WriteNodeMap(ofstream_t& fout, FileInfo& node) const;
+    void WriteNode(ofstream_t& fout, FileInfo& node) const;
 public:
     SearchFiles();
     ~SearchFiles();
     void Index(ofstream_t& fout, string_t path);
     unsigned GetObjectCount() const;
     unsigned GetDirCount() const;
+    void SetCount(unsigned c_dir, unsigned c_obj);
+    void Stop(bool stop);
 };
 
 #endif // SERCHFILES_H

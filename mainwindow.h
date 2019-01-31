@@ -3,6 +3,7 @@
 
 #include "controller.h"
 #include "searchfiles.h"
+#include "myenums.h"
 
 #include <QMainWindow>
 #include <QTextEdit>
@@ -12,14 +13,6 @@
 #include <QTreeView>
 #include <QHBoxLayout>
 
-
-enum Process {
-    DEFAULT = 1,
-    START,
-    STOP,
-    PAUSE,
-    SEARCH
-};
 
 namespace Ui {
 class MainWindow;
@@ -33,10 +26,6 @@ class MainWindow : public QMainWindow {
     QTableView* table_view;
     QTreeView* tree_view;
     QHBoxLayout* h_main_loyout;
-
-    //threads
-    StartThread* start_thread;
-    StopThread* stop_thread;
 
     void SwitchButtons(Process proc);
 public:
