@@ -2,10 +2,9 @@
 #define MAINWINDOW_H
 
 #include "controller.h"
-#include "searchfiles.h"
-#include "myenums.h"
 
 #include <QMainWindow>
+#include <QtWidgets>
 #include <QTextEdit>
 #include <QLineEdit>
 #include <QLabel>
@@ -13,6 +12,7 @@
 #include <QTreeView>
 #include <QHBoxLayout>
 
+#define S_TYPE QStringList() << "Name" << "Extension" << "Size" << "Date"
 
 namespace Ui {
 class MainWindow;
@@ -20,25 +20,34 @@ class MainWindow;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
-    SearchFiles* s_ptr_;
+    Indexer* indx_ptr_;
     Ui::MainWindow* ui;
-    QLabel* sb_info;
-    QTableView* table_view;
+
+    QToolBar* ptb;
+    QAction* start_action;
+    QAction* pause_action;
+    QAction* stop_action;
+    QAction* search_action;
+    QLineEdit* s_line;
+    QComboBox* s_combo;
+
+    QFileSystemModel* f_model;
+    QTableWidget* table_wgt;
     QTreeView* tree_view;
     QHBoxLayout* h_main_loyout;
 
     void SwitchButtons(Process proc);
 public:
-    MainWindow(SearchFiles* s_ptr, QWidget *parent = nullptr);
+    MainWindow(Indexer* indx_ref, QWidget *parent = nullptr);
     ~MainWindow();
 
 private slots:
-    void on_actionStart_triggered();
-    void on_actionPause_triggered();
-    void on_actionStop_triggered();
-    void on_actionSearch_triggered();
+    void onActionStop();
+    void onActionPause();
+    void onActionStart();
+    void onActionSearch();
     void ActionsAfterIndexing();
-
+    void DisplayFileInfo(Indexer::FileInfo info);
 };
 
 #endif // MAINWINDOW_H

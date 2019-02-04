@@ -1,5 +1,5 @@
 #include "mainwindow.h"
-
+#include <QtDebug>
 #include <QApplication>
 #include <iostream>
 #include <locale>
@@ -11,9 +11,11 @@ int main(int argc, char *argv[])
 #if defined(_WIN32)
     std::locale::global(std::locale(""));
 #endif
+    qRegisterMetaType<Indexer::FileInfo>("Indexer::FileInfo"); // for QObject::connect new syntax
+
     QApplication a(argc, argv);
-    SearchFiles s;
-    MainWindow w(&s);
+    Indexer indx;
+    MainWindow w(&indx);
     w.show();
 
     return a.exec();

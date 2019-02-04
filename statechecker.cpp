@@ -7,5 +7,8 @@ Process StateChecker::Check() {
 }
 
 void StateChecker::SetState(Process state) {
+    QMutex mtx;
+    mtx.lock ();
     state_ = state;
+    mtx.unlock ();
 }

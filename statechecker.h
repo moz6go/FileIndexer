@@ -1,8 +1,11 @@
 #ifndef STATECHECKER_H
 #define STATECHECKER_H
+
+#include <QMutex>
+#include <QThread>
 #include "myenums.h"
 
-class StateChecker
+class StateChecker : public QObject
 {
 protected:
     Process state_;

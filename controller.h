@@ -1,22 +1,21 @@
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
 
-#include <QObject>
 #include <QThread>
-#include "searchfiles.h"
+
+#include "indexer.h"
 
 class Controller : public QObject {
     Q_OBJECT
-    SearchFiles* s_ptr_;
+    Indexer* indx_ptr_;
 public:
-    Controller (SearchFiles* s_ptr);
+    Controller (Indexer* indx_ptr);
 public slots:
     void onStartButtonClick();
     void onStopButtonClick();
     void onPauseButtonClick();
     void onSearchButtonClick();
 signals:
-    void paused (QString);
     void finished();
 };
 
