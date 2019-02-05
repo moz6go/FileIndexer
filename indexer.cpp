@@ -8,9 +8,9 @@ Indexer::~Indexer() {}
 void Indexer::Index(){
     fout.open(INDEX_FILE);
     if (fout.is_open()) {
-        fout << "<?xml version = " << '"' << "1.0" << '"' << "?>" <<
-                "<!-- Filesystem index -->" <<
-                "<filesystem>";
+        fout << "<?xml version = " << '"' << "1.0" << '"' << "?>\n" <<
+                "<!-- Filesystem index -->\n" <<
+                "<filesystem>\n";
     }
 #if defined(_WIN32)
     DWORD dr = GetLogicalDrives();
@@ -128,13 +128,13 @@ void Indexer::RecursiveSearchFiles(string_t path) {
 void Indexer::WriteIndex(FileInfo& node, ofstream_t& fout) const {
 
     if (fout.is_open()) {
-        fout << "<object>" <<
-                "<name>" << node.name << "</name>" <<
-                "<extension>" << node.extension << "</extension>" <<
-                "<size>" << node.size << "</size>" <<
-                "<date>" << node.date << "</date>" <<
-                "<path>" << node.path << "</path>" <<
-                "</object>";
+        fout << "<object>\n" <<
+                "<name>" << node.name << "</name>\n" <<
+                "<extension>" << node.extension << "</extension>\n" <<
+                "<size>" << node.size << "</size>\n" <<
+                "<date>" << node.date << "</date>\n" <<
+                "<path>" << node.path << "</path>\n" <<
+                "</object>\n";
     }
 }
 
@@ -152,11 +152,5 @@ void Indexer::SetCount(unsigned c_dir, unsigned c_obj) {
 }
 
 void Indexer::ReadIndex(){
-    XmlReader handler;
-    QFile file(INDEX_FILE);
-    QXmlInputSource source(&file);
-    QXmlSimpleReader reader;
 
-    reader.setContentHandler(&handler);
-    reader.parse(source);
 }

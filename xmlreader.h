@@ -19,7 +19,7 @@ public:
 };*/
 
 
-#include <QtXml>
+/*#include <QtXml>
 #include "general.h"
 
 class XmlReader : public QXmlDefaultHandler {
@@ -29,7 +29,7 @@ public:
     bool characters(const QString& strText);
     bool endElement(const QString&, const QString&, const QString& str);
     bool fatalError(const QXmlParseException& exception);
-};
+};*/
 
 
 #endif // XMLREADER_H
