@@ -47,7 +47,7 @@ private slots:
     void onActionStart();
     void onActionSearch();
     void ActionsAfterIndexing();
-    void DisplayFileInfo(Indexer::FileInfo info);
+    void DisplayFileInfo(FileInfo info);
 };
 
 #endif // MAINWINDOW_H

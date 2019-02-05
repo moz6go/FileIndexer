@@ -26,7 +26,7 @@ void Indexer::Index(){
         }
     }
 #else
-    RecursiveSearchFiles ("");
+    RecursiveSearchFiles (""); ///home/myroslav/Документи
 #endif
     fout << "</filesystem>";
     fout.close ();
@@ -70,7 +70,7 @@ void Indexer::RecursiveSearchFiles(string_t path) {
             curr_file_info.size = file_data.nFileSizeLow;
 
             ++count_;
-            WriteXml(curr_file_info, fout);
+            WriteIndex(curr_file_info, fout);
 
             if(state_ == STOP) return;
             if(state_ == PAUSE) while (state_ == PAUSE) QThread::msleep (100); //need to rework...
@@ -115,7 +115,7 @@ void Indexer::RecursiveSearchFiles(string_t path) {
             curr_file_info.size = curr_file_info.extension == "DIR" ? 0 : file_info.st_size;
             temp_path.clear ();
             ++count_;
-            WriteXml(curr_file_info, fout);
+            WriteIndex(curr_file_info, fout);
 
             if(state_ == STOP) return;
             if(state_ == PAUSE) while (state_ == PAUSE) QThread::msleep (100); //need to rework...
@@ -125,7 +125,7 @@ void Indexer::RecursiveSearchFiles(string_t path) {
 }
 #endif
 
-void Indexer::WriteXml(FileInfo& node, ofstream_t& fout) const {
+void Indexer::WriteIndex(FileInfo& node, ofstream_t& fout) const {
 
     if (fout.is_open()) {
         fout << "  <object>\n" <<
@@ -150,3 +150,4 @@ void Indexer::SetCount(unsigned c_dir, unsigned c_obj) {
     c_dir_ = c_dir;
     count_ = c_obj;
 }
+

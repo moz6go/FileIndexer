@@ -3,7 +3,7 @@
 
 #include <QMutex>
 #include <QThread>
-#include "myenums.h"
+#include "general.h"
 
 class StateChecker : public QObject
 {
