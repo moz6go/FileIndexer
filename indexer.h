@@ -27,6 +27,7 @@ public:
     unsigned GetObjectCount() const;
     unsigned GetDirCount() const;
     void SetCount(unsigned c_dir, unsigned c_obj);
+    void ReadIndex();
 };
 
 #endif // SERCHFILES_H

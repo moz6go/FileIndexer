@@ -13,11 +13,9 @@ int main(int argc, char *argv[])
     std::locale::global(std::locale(""));
 #endif
     qRegisterMetaType<FileInfo>("FileInfo"); // for QObject::connect new syntax
-
     QApplication a(argc, argv);
-    IndexReader ir;
-    ir.ReadIndexToString();
     Indexer indx;
+    indx.ReadIndex ();
     MainWindow w(&indx);
     w.show();
 

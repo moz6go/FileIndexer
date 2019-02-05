@@ -8,9 +8,9 @@ Indexer::~Indexer() {}
 void Indexer::Index(){
     fout.open(INDEX_FILE);
     if (fout.is_open()) {
-        fout << "<?xml version = " << '"' << "1.0" << '"' << "?>\n" <<
-                "<!-- Filesystem index -->\n" <<
-                "<filesystem>\n";
+        fout << "<?xml version = " << '"' << "1.0" << '"' << "?>" <<
+                "<!-- Filesystem index -->" <<
+                "<filesystem>";
     }
 #if defined(_WIN32)
     DWORD dr = GetLogicalDrives();
@@ -26,7 +26,7 @@ void Indexer::Index(){
         }
     }
 #else
-    RecursiveSearchFiles (""); ///home/myroslav/Документи
+    RecursiveSearchFiles ("/home/myroslav/Документи/Repos"); ///home/myroslav/Документи
 #endif
     fout << "</filesystem>";
     fout.close ();
@@ -128,13 +128,13 @@ void Indexer::RecursiveSearchFiles(string_t path) {
 void Indexer::WriteIndex(FileInfo& node, ofstream_t& fout) const {
 
     if (fout.is_open()) {
-        fout << "  <object>\n" <<
-                "    <name>" << node.name << "</name>\n" <<
-                "    <extension>" << node.extension << "</extension>\n" <<
-                "    <size>" << node.size << "</size>\n" <<
-                "    <date>" << node.date << "</date>\n" <<
-                "    <path>" << node.path << "</path>\n" <<
-                "  </object>\n";
+        fout << "<object>" <<
+                "<name>" << node.name << "</name>" <<
+                "<extension>" << node.extension << "</extension>" <<
+                "<size>" << node.size << "</size>" <<
+                "<date>" << node.date << "</date>" <<
+                "<path>" << node.path << "</path>" <<
+                "</object>";
     }
 }
 
@@ -151,3 +151,12 @@ void Indexer::SetCount(unsigned c_dir, unsigned c_obj) {
     count_ = c_obj;
 }
 
+void Indexer::ReadIndex(){
+    XmlReader handler;
+    QFile file(INDEX_FILE);
+    QXmlInputSource source(&file);
+    QXmlSimpleReader reader;
+
+    reader.setContentHandler(&handler);
+    reader.parse(source);
+}

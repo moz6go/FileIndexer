@@ -159,7 +159,6 @@ void MainWindow::ActionsAfterIndexing(){
 }
 
 void MainWindow::DisplayFileInfo(FileInfo info){
-
     table_wgt->insertRow(table_wgt->rowCount());
 //    table_wgt->setItem(table_wgt->rowCount() - 1, 0, new QTableWidgetItem(QString::fromStdString(info.name)));
 //    table_wgt->setItem(table_wgt->rowCount() - 1, 1, new QTableWidgetItem(QString::fromStdString(info.extension)));
