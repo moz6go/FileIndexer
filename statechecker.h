@@ -1,18 +1,16 @@
 #ifndef STATECHECKER_H
 #define STATECHECKER_H
 
-#include <QMutex>
-#include <QThread>
 #include "general.h"
 
 class StateChecker : public QObject
 {
 protected:
-    Process state_;
+    Condition state_;
 public:
     StateChecker();
-    Process Check();
-    void SetState(Process state);
+    Condition Check();
+    void SetState(Condition state);
 };
 
 #endif // STATECHECKER_H

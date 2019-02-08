@@ -1,11 +1,4 @@
-#include "xmlreader.h"
 #include "mainwindow.h"
-#include <QtDebug>
-#include <QApplication>
-#include <iostream>
-#include <locale>
-
-using namespace std;
 
 int main(int argc, char *argv[])
 {
@@ -15,8 +8,8 @@ int main(int argc, char *argv[])
     qRegisterMetaType<FileInfo>("FileInfo"); // for QObject::connect new syntax
     QApplication a(argc, argv);
     Indexer indx;
-    indx.ReadIndex ();
-    MainWindow w(&indx);
+    IndexReader reader;
+    MainWindow w(&indx, &reader);
     w.show();
 
     return a.exec();

@@ -2,11 +2,11 @@
 
 StateChecker::StateChecker(): state_(DEFAULT) {}
 
-Process StateChecker::Check() {
+Condition StateChecker::Check() {
     return state_;
 }
 
-void StateChecker::SetState(Process state) {
+void StateChecker::SetState(Condition state) {
     QMutex mtx;
     mtx.lock ();
     state_ = state;

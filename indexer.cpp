@@ -1,16 +1,14 @@
 #include "indexer.h"
 
-Indexer::Indexer() : type_(BY_NAME), count_(0), c_dir_(1)  {
+Indexer::Indexer() : count_(0), c_dir_(1)  {
 }
 
 Indexer::~Indexer() {}
 
 void Indexer::Index(){
-    fout.open(INDEX_FILE);
-    if (fout.is_open()) {
-        fout << "<?xml version = " << '"' << "1.0" << '"' << "?>\n" <<
-                "<!-- Filesystem index -->\n" <<
-                "<filesystem>\n";
+    fout_.open(INDEX_FILE);
+    if (fout_.is_open()) {
+        fout_ << HEADER_TAG << REM_TAG << FS_OPEN_TAG;
     }
 #if defined(_WIN32)
     DWORD dr = GetLogicalDrives();
@@ -26,10 +24,10 @@ void Indexer::Index(){
         }
     }
 #else
-    RecursiveSearchFiles ("/home/myroslav/Документи/Repos"); ///home/myroslav/Документи
+    RecursiveSearchFiles (""); // /home/myroslav/Документи/Repos
 #endif
-    fout << "</filesystem>";
-    fout.close ();
+    fout_ << FS_CLOSE_TAG;
+    fout_.close ();
 }
 
 #if defined(_WIN32)
@@ -70,7 +68,7 @@ void Indexer::RecursiveSearchFiles(string_t path) {
             curr_file_info.size = file_data.nFileSizeLow;
 
             ++count_;
-            WriteIndex(curr_file_info, fout);
+            WriteIndex(curr_file_info, fout_);
 
             if(state_ == STOP) return;
             if(state_ == PAUSE) while (state_ == PAUSE) QThread::msleep (100); //need to rework...
@@ -82,6 +80,7 @@ void Indexer::RecursiveSearchFiles(string_t path) {
 #else
 void Indexer::RecursiveSearchFiles(string_t path) {
     DIR *dir;
+    char str_date[20];
     struct dirent *dir_obj;
     struct stat file_info;
     FileInfo curr_file_info;
@@ -104,10 +103,10 @@ void Indexer::RecursiveSearchFiles(string_t path) {
                 path.resize(path.size() - strlen(dir_obj->d_name));
             }
             //init fileinfo
-
             curr_file_info.name = dir_obj->d_name;
             curr_file_info.path = path + curr_file_info.name;
-            curr_file_info.date = file_info.st_mtim.tv_sec;
+            strftime(str_date, 20, "%d.%m.%Y", localtime(&file_info.st_mtim.tv_sec));
+            curr_file_info.date = str_date;
             curr_file_info.extension =  !(!(dir_obj->d_type ^ DT_DIR) || dir_obj->d_name[0] == '.') ?
                                             (curr_file_info.name.substr(curr_file_info.name.find_last_of('.') + 1) == curr_file_info.name ?
                                                 "Unknown": curr_file_info.name.substr(curr_file_info.name.find_last_of('.') + 1)):
@@ -115,7 +114,7 @@ void Indexer::RecursiveSearchFiles(string_t path) {
             curr_file_info.size = curr_file_info.extension == "DIR" ? 0 : file_info.st_size;
             temp_path.clear ();
             ++count_;
-            WriteIndex(curr_file_info, fout);
+            WriteIndex(curr_file_info, fout_);
 
             if(state_ == STOP) return;
             if(state_ == PAUSE) while (state_ == PAUSE) QThread::msleep (100); //need to rework...
@@ -128,13 +127,12 @@ void Indexer::RecursiveSearchFiles(string_t path) {
 void Indexer::WriteIndex(FileInfo& node, ofstream_t& fout) const {
 
     if (fout.is_open()) {
-        fout << "<object>\n" <<
-                "<name>" << node.name << "</name>\n" <<
-                "<extension>" << node.extension << "</extension>\n" <<
-                "<size>" << node.size << "</size>\n" <<
-                "<date>" << node.date << "</date>\n" <<
-                "<path>" << node.path << "</path>\n" <<
-                "</object>\n";
+        fout << OBJECT_OPEN_TAG << node.path << OBJECT_CLOSE_TAG_ATTR <<
+                NAME_OPEN_TAG << node.name << NAME_CLOSE_TAG <<
+                EXT_OPEN_TAG << node.extension << EXT_CLOSE_TAG <<
+                SIZE_OPEN_TAG << node.size << SIZE_CLOSE_TAG <<
+                DATE_OPEN_TAG << node.date << DATE_CLOSE_TAG <<
+                OBJECT_CLOSE_TAG;
     }
 }
 
@@ -149,8 +147,4 @@ unsigned Indexer::GetDirCount() const {
 void Indexer::SetCount(unsigned c_dir, unsigned c_obj) {
     c_dir_ = c_dir;
     count_ = c_obj;
-}
-
-void Indexer::ReadIndex(){
-
 }
