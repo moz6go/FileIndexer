@@ -75,7 +75,8 @@ void MainWindow::BuildToolbar() {
 }
 
 void MainWindow::DefaultTreeInit() {
-    f_model_->setRootPath(QDir::rootPath());
+    QString path = "/home/myroslav/Документи/Repos";
+    f_model_->setRootPath(path/*QDir::rootPath()*/);
     tree_view_->setModel(f_model_);
     for(int i = 1; i < 4; ++i) {
         tree_view_->hideColumn (i);
@@ -104,7 +105,7 @@ void MainWindow::InitReadIndex() {
     contr->moveToThread (read_indx_thread);
 
     QObject::connect (read_indx_thread, &QThread::started, contr, &Controller::ReadIndex, Qt::UniqueConnection);
-    QObject::connect (indx_ptr_, &Indexer::Message, this, &MainWindow::ActionsAfterIndexRead, Qt::UniqueConnection);
+    QObject::connect (indx_ptr_, &Indexer::Message, this, &MainWindow::ShowMessage, Qt::UniqueConnection);
     read_indx_thread->start ();
 }
 
@@ -213,12 +214,13 @@ void MainWindow::onActionSearch() {
 
     QObject::connect (indx_ptr_, &Indexer::MessageCount, this, &MainWindow::ActionsAfterSearch, Qt::UniqueConnection);
     QObject::connect (indx_ptr_, &Indexer::SendInfoToView, this, &MainWindow::DisplayFileInfo, Qt::UniqueConnection);
-
     search_thread->start ();
 }
 
-void MainWindow::ActionsAfterIndexRead(QString msg){
-    SwitchButtons(DEFAULT);
+void MainWindow::ShowMessage(QString msg){
+    if (msg == INDEX_IS_EMPTY || msg == INDEX_SUCCESS) {
+        SwitchButtons(DEFAULT);
+    }
     ui->s_bar->showMessage (msg);
 }
 
@@ -239,19 +241,15 @@ void MainWindow::DisplayFileInfo(FileInfo info) {
 
 #if defined(_WIN32)
     auto from_std_str = &QString::fromStdWString;
+    table_wgt_->setItem(table_wgt_->rowCount() - 1, 4, new QTableWidgetItem((*from_std_str)(info.path).remove(3,1)));
 #else
     auto from_std_str = &QString::fromStdString;
+    table_wgt_->setItem(table_wgt_->rowCount() - 1, 4, new QTableWidgetItem((*from_std_str)(info.path)));
 #endif
-
     table_wgt_->setItem(table_wgt_->rowCount() - 1, 0, new QTableWidgetItem((*from_std_str)(info.name)));
     table_wgt_->setItem(table_wgt_->rowCount() - 1, 1, new QTableWidgetItem((*from_std_str)(info.extension)));
     table_wgt_->setItem(table_wgt_->rowCount() - 1, 2, new QTableWidgetItem((*from_std_str)(info.size)));
     table_wgt_->setItem(table_wgt_->rowCount() - 1, 3, new QTableWidgetItem((*from_std_str)(info.date)));
-#if defined(_WIN32)
-    table_wgt_->setItem(table_wgt_->rowCount() - 1, 4, new QTableWidgetItem((*from_std_str)(info.path).remove(3,1)));
-#else
-    table_wgt_->setItem(table_wgt_->rowCount() - 1, 4, new QTableWidgetItem((*from_std_str)(info.path)));
-#endif
     if (!(table_wgt_->rowCount() % 1000)) {
         ui->s_bar->showMessage("Searching... " + QString::number(table_wgt_->rowCount()) + " objects already found...");
     }

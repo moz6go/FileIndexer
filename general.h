@@ -28,6 +28,7 @@
 #include <fstream>
 #include <iterator>
 #include <vector>
+#include <chrono>
 
 #if defined(_WIN32)
     #include <Windows.h>
@@ -48,30 +49,30 @@
     const int SIZE_WID = 24;
     const string_t INDEX_FILE = L"index.xml";
 
-    const string_t HEADER_TAG = L"<?xml version = \"1.0\"?>\n";
-    const string_t REM_TAG = L"<!-- Filesystem index -->\n";
-    const string_t FS_OPEN_TAG = L"<filesystem>\n";
-    const string_t FS_CLOSE_TAG = L"</filesystem>\n";
+    const string_t HEADER_TAG = L"<?xml version = \"1.0\"?>";
+    const string_t REM_TAG = L"<!-- Filesystem index -->";
+    const string_t FS_OPEN_TAG = L"<filesystem>";
+    const string_t FS_CLOSE_TAG = L"</filesystem>";
 
     const string_t OBJECT_OPEN_TAG = L"<object path =\"";
-    const string_t OBJECT_CLOSE_TAG_ATTR = L"\">\n";
-    const string_t OBJECT_CLOSE_TAG = L"</object>\n";
+    const string_t OBJECT_CLOSE_TAG_ATTR = L"\">";
+    const string_t OBJECT_CLOSE_TAG = L"</object>";
     const size_t OBJECT_OPEN_TAG_SIZE = 15;
 
     const string_t NAME_OPEN_TAG = L"<name>";
-    const string_t NAME_CLOSE_TAG = L"</name>\n";
+    const string_t NAME_CLOSE_TAG = L"</name>";
     const size_t NAME_OPEN_TAG_SIZE = 6;
 
     const string_t EXT_OPEN_TAG = L"<extension>";
-    const string_t EXT_CLOSE_TAG = L"</extension>\n";
+    const string_t EXT_CLOSE_TAG = L"</extension>";
     const size_t EXT_OPEN_TAG_SIZE = 11;
 
     const string_t SIZE_OPEN_TAG = L"<size>";
-    const string_t SIZE_CLOSE_TAG = L"</size>\n";
+    const string_t SIZE_CLOSE_TAG = L"</size>";
     const size_t SIZE_OPEN_TAG_SIZE = 6;
 
     const string_t DATE_OPEN_TAG = L"<date>";
-    const string_t DATE_CLOSE_TAG = L"</date>\n";
+    const string_t DATE_CLOSE_TAG = L"</date>";
     const size_t DATE_OPEN_TAG_SIZE = 6;
 
 #else
@@ -112,9 +113,12 @@
 
 #define S_TYPE QStringList() << "Name" << "Extension" << "Size" << "Date"
 
-
+const QString INDEX_IS_EMPTY = "Index is empty";
+const QString INDEX_SUCCESS = "Index was read successful";
+const QString SEARCH_IN_FS = "Searching in filesystem...";
 enum SearchType {
-    BY_NAME = 1,
+    ALL,
+    BY_NAME,
     BY_EXTANSION,
     BY_DATE,
     BY_SIZE
@@ -133,7 +137,7 @@ struct FileInfo {
     string_t name;
     string_t path;
     string_t extension;
-    string_t /*f_size_t*/ size;
+    string_t size;
     string_t date;
 };
 

@@ -48,7 +48,7 @@ private slots:
     void onActionSearch();
     void ActionsAfterIndexing();
     void ActionsAfterSearch(unsigned count);
-    void ActionsAfterIndexRead(QString msg);
+    void ShowMessage(QString msg);
     void DisplayFileInfo(FileInfo info);
     void setSearchType(QString type);
     void ShowDir(QTableWidgetItem* item);

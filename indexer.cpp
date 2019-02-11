@@ -1,6 +1,6 @@
 #include "indexer.h"
 
-Indexer::Indexer() : count_(0), c_dir_(1)  {}
+Indexer::Indexer() : count_(0), c_dir_(1), search_res_count(0), type_(ALL)  {}
 
 Indexer::~Indexer() {}
 #if defined(_WIN32)
@@ -19,6 +19,7 @@ void Indexer::GetWinDrives() {
 #endif
 
 void Indexer::WriteIndex(){
+    auto start = std::chrono::steady_clock::now ();
     fout_.open(INDEX_FILE);
     if (fout_.is_open()) {
         fout_ << HEADER_TAG << REM_TAG << FS_OPEN_TAG;
@@ -33,14 +34,17 @@ void Indexer::WriteIndex(){
 #endif
     fout_ << FS_CLOSE_TAG;
     fout_.close ();
+    auto finish = std::chrono::steady_clock::now ();
+    auto el_ms = std::chrono::duration_cast<std::chrono::seconds>(finish - start);
+    qDebug() << el_ms.count();
 }
 
-#if defined(_WIN32)
 void Indexer::RecursiveSearchFiles(string_t path) {
-    WIN32_FIND_DATAW file_data;
-    SYSTEMTIME sys_time;
     char_t str_date[20];
     FileInfo curr_file_info;
+#if defined(_WIN32)
+    WIN32_FIND_DATAW file_data;
+    SYSTEMTIME sys_time;
     path += L"\\*.*";
     HANDLE file = FindFirstFile(path.c_str(), &file_data);
     path.resize(path.size() - 3);
@@ -76,24 +80,10 @@ void Indexer::RecursiveSearchFiles(string_t path) {
                                                 L"Unknown": curr_file_info.name.substr(curr_file_info.name.find_last_of('.') + 1)):
                                         L"DIR";
             curr_file_info.size = std::to_wstring(file_data.nFileSizeLow);
-
-            ++count_;
-            WriteIndexNode(curr_file_info, fout_);
-
-            if(state_ == STOP) return;
-            if(state_ == PAUSE) while (state_ == PAUSE) QThread::msleep (100); //need to rework...
-
-        } while (FindNextFile(file, &file_data) != 0);
-        FindClose(file);
-    }
-}
 #else
-void Indexer::RecursiveSearchFiles(string_t path) {
     DIR *dir;
-    char str_date[20];
     struct dirent *dir_obj;
     struct stat file_info;
-    FileInfo curr_file_info;
     string_t temp_path;
     path.push_back ('/');
 
@@ -118,21 +108,55 @@ void Indexer::RecursiveSearchFiles(string_t path) {
             strftime(str_date, 20, "%d.%m.%Y", localtime(&file_info.st_mtim.tv_sec));
             curr_file_info.date = str_date;
             curr_file_info.extension =  !(!(dir_obj->d_type ^ DT_DIR) || dir_obj->d_name[0] == '.') ?
-                                            (curr_file_info.name.substr(curr_file_info.name.find_last_of('.') + 1) == curr_file_info.name ?
-                                                "Unknown": curr_file_info.name.substr(curr_file_info.name.find_last_of('.') + 1)):
-                                        "DIR";
+                        (curr_file_info.name.substr(curr_file_info.name.find_last_of('.') + 1) == curr_file_info.name ?
+                             "Unknown": curr_file_info.name.substr(curr_file_info.name.find_last_of('.') + 1)):
+                        "DIR";
             curr_file_info.size = curr_file_info.extension == "DIR" ? "0" : std::to_string(file_info.st_size);
             temp_path.clear ();
-            ++count_;
-            WriteIndexNode(curr_file_info, fout_);
+#endif
+            switch(type_) {
+            case ALL:
+                ++count_;
+                WriteIndexNode(curr_file_info, fout_);
+                if(state_ == STOP) return;
+                if(state_ == PAUSE) while (state_ == PAUSE) QThread::msleep (100); //need to rework...
+                break;
+            case BY_NAME:
+                if (key_ == curr_file_info.name){
+                    emit SendInfoToView(curr_file_info);
+                    ++search_res_count;
+                }
+                break;
+            case BY_EXTANSION:
+                if (key_ == curr_file_info.extension){
+                    emit SendInfoToView(curr_file_info);
+                    ++search_res_count;
+                }
+                break;
 
-            if(state_ == STOP) return;
-            if(state_ == PAUSE) while (state_ == PAUSE) QThread::msleep (100); //need to rework...
+            case BY_SIZE:
+                if (key_ == curr_file_info.size){
+                    emit SendInfoToView(curr_file_info);
+                    ++search_res_count;
+                }
+                break;
+            case BY_DATE:
+                if (key_ == curr_file_info.date){
+                    emit SendInfoToView(curr_file_info);
+                    ++search_res_count;
+                }
+                break;
+            }
+#if defined(_WIN32)
+        } while (FindNextFile(file, &file_data) != 0);
+        FindClose(file);
+
+#else
         }
         closedir(dir);
+#endif
     }
 }
-#endif
 
 void Indexer::WriteIndexNode(FileInfo& node, ofstream_t& fout) const {
     if (fout.is_open()) {
@@ -150,28 +174,28 @@ void Indexer::ReadIndex() {
     if (fin.is_open()){
         xml_doc_ = string_t(std::istreambuf_iterator<char_t>(fin), std::istreambuf_iterator<char_t>());
         if(xml_doc_.size()) {
-            emit Message("Index was read successful");
+            emit Message(INDEX_SUCCESS);
         }
         else {
-            emit Message("Index is empty");
+            emit Message(INDEX_IS_EMPTY);
         }
         fin.close();
     }
     else {
-        emit Message("Index is empty");
+        emit Message(INDEX_IS_EMPTY);
     }
 }
 
-void Indexer::Search(SearchType key, string_t value)  {
+void Indexer::Search(SearchType type, string_t key)  {
     key_ = key;
-    value_ = value;
-
+    type_ = type;
+    search_res_count = 0;
     string_t open_tag, close_tag;
-    unsigned res_count(0);
+
     size_t open_tag_size = NAME_OPEN_TAG_SIZE;
     FileInfo f_info;
 
-    switch (key) {
+    switch (type) {
     case BY_NAME:
         open_tag = NAME_OPEN_TAG;
         close_tag = NAME_CLOSE_TAG;
@@ -191,6 +215,7 @@ void Indexer::Search(SearchType key, string_t value)  {
         open_tag = SIZE_OPEN_TAG;
         close_tag = SIZE_CLOSE_TAG;
         open_tag_size = SIZE_OPEN_TAG_SIZE;
+    case ALL: break;
     }
 
     if(xml_doc_.size()) {
@@ -199,7 +224,7 @@ void Indexer::Search(SearchType key, string_t value)  {
             if ((xml_doc_.find(open_tag, pos) + open_tag_size) > pos) {
                 //if (GetElement(open_tag, close_tag, open_tag_size, pos) == value) {
                 if (xml_doc_.substr(xml_doc_.find(open_tag, pos) + open_tag_size,
-                                  xml_doc_.find(close_tag, pos) - (xml_doc_.find(open_tag, pos) + open_tag_size)) == value || value == "*") {
+                                  xml_doc_.find(close_tag, pos) - (xml_doc_.find(open_tag, pos) + open_tag_size)) == key || key == "*") {
 
                     //store FileInfo and send signal to view
                     f_info.path = xml_doc_.substr(xml_doc_.find(OBJECT_OPEN_TAG, pos) + OBJECT_OPEN_TAG_SIZE,
@@ -226,7 +251,7 @@ void Indexer::Search(SearchType key, string_t value)  {
                     f_info.size = std::stol(GetElement (SIZE_OPEN_TAG, SIZE_CLOSE_TAG, SIZE_OPEN_TAG_SIZE, pos));
                     f_info.date = std::stol(GetElement (DATE_OPEN_TAG, SIZE_CLOSE_TAG, DATE_OPEN_TAG_SIZE, pos));*/
                     //----------------------------------------------------------------------------------------
-                    ++res_count;
+                    ++search_res_count;
                     emit SendInfoToView(f_info);
                 }
                 pos = xml_doc_.find(OBJECT_CLOSE_TAG, pos) + 1;
@@ -237,8 +262,8 @@ void Indexer::Search(SearchType key, string_t value)  {
         } while (pos < xml_doc_.size());
 
     }
-    if(!res_count) {
-        /*emit Message("Searching in filesystem...");
+    if(!search_res_count) {
+        emit Message(SEARCH_IN_FS);
 #if defined(_WIN32)
         GetWinDrives();
         for (auto& drive : drives_){
@@ -246,9 +271,9 @@ void Indexer::Search(SearchType key, string_t value)  {
     }
 #else
         RecursiveSearchFiles ("");
-#endif*/
+#endif
     }
-    emit MessageCount(res_count);
+    emit MessageCount(search_res_count);
 }
 
 inline string_t Indexer::GetElement(const string_t& open_tag, const string_t& close_tag, const size_t& open_tag_size, const size_t& pos){
