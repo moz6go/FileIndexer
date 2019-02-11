@@ -9,7 +9,6 @@ class MainWindow;
 class MainWindow : public QMainWindow {
     Q_OBJECT
     Indexer* indx_ptr_;
-    IndexReader* reader_ptr_;
     SearchType type_;
     Ui::MainWindow* ui;
 
@@ -39,7 +38,7 @@ class MainWindow : public QMainWindow {
     void SwitchButtons(Condition proc);
     void SearchMode();
 public:
-    MainWindow(Indexer* indx_ref, IndexReader* reader_ptr, QWidget *parent = nullptr);
+    MainWindow(Indexer* indx_ref, QWidget *parent = nullptr);
     ~MainWindow();
 
 private slots:

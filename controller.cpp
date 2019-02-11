@@ -2,12 +2,10 @@
 
 Controller::Controller (Indexer* indx_ptr) : indx_ptr_(indx_ptr) {}
 
-Controller::Controller (IndexReader* reader_ptr) : reader_ptr_(reader_ptr) {}
-
 void Controller::onStartButtonClick(){
     indx_ptr_->SetCount(0, 0);
     indx_ptr_->SetState (DEFAULT);
-    indx_ptr_->Index ();
+    indx_ptr_->WriteIndex ();
     emit finished ();
 }
 
@@ -22,10 +20,10 @@ void Controller::onPauseButtonClick() {
 }
 
 void Controller::ReadIndex (){
-    reader_ptr_->ReadIndexToString ();
+    indx_ptr_->ReadIndex ();
     emit finished ();
 }
 
 void Controller::onSearchButtonClick(SearchType key, string_t value) {
-    reader_ptr_->SearchInIndex (key, value);
+    indx_ptr_->Search (key, value);
 }

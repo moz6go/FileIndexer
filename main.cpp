@@ -8,8 +8,7 @@ int main(int argc, char *argv[])
     qRegisterMetaType<FileInfo>("FileInfo"); // for QObject::connect new syntax
     QApplication a(argc, argv);
     Indexer indx;
-    IndexReader reader;
-    MainWindow w(&indx, &reader);
+    MainWindow w(&indx);
     w.show();
 
     return a.exec();

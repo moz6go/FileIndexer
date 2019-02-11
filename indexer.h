@@ -7,16 +7,31 @@ class Indexer : public StateChecker {
     Q_OBJECT
     unsigned count_;
     unsigned c_dir_;
+    SearchType key_;
+    string_t value_;
     ofstream_t fout_;
-    void WriteIndex(FileInfo& node, ofstream_t& fout) const;
+    string_t xml_doc_;
+    std::vector<string_t> drives_;
+    string_t GetElement(const string_t& open_tag, const string_t& close_tag, const size_t& open_tag_size, const size_t& pos);
     void RecursiveSearchFiles(string_t path);
 public:
     Indexer();
     ~Indexer();
-    void Index();
+#if defined(_WIN32)
+    void GetWinDrives();
+#endif
+    void WriteIndexNode(FileInfo& node, ofstream_t& fout) const;
+    void WriteIndex();
+    void ReadIndex();
+    void Search(SearchType key, string_t value);
+    void SetCount(unsigned c_dir, unsigned c_obj);
     unsigned GetObjectCount() const;
     unsigned GetDirCount() const;
-    void SetCount(unsigned c_dir, unsigned c_obj);
+
+signals:
+    void Message(QString mes);
+    void MessageCount(unsigned res_coun);
+    void SendInfoToView(FileInfo f_info);
 };
 
 #endif // SERCHFILES_H

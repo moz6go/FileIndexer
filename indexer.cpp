@@ -1,27 +1,32 @@
 #include "indexer.h"
 
-Indexer::Indexer() : count_(0), c_dir_(1)  {
-}
+Indexer::Indexer() : count_(0), c_dir_(1)  {}
 
 Indexer::~Indexer() {}
+#if defined(_WIN32)
+void Indexer::GetWinDrives() {
+    DWORD dr = GetLogicalDrives();
+    for (int x = 0; x <= 'Z'-'A'; x++)  {
+        int n = ((dr >> x) & 1);
+        if (n)  {
+            string_t curr_drive;
+            curr_drive.push_back(static_cast<wchar_t>('A' + x));
+            curr_drive += L":\\";
+            drives_.push_back(curr_drive);
+        }
+    }
+}
+#endif
 
-void Indexer::Index(){
+void Indexer::WriteIndex(){
     fout_.open(INDEX_FILE);
     if (fout_.is_open()) {
         fout_ << HEADER_TAG << REM_TAG << FS_OPEN_TAG;
     }
 #if defined(_WIN32)
-    DWORD dr = GetLogicalDrives();
-    for (int x = 0; x <= 'Z'-'A'; x++)
-    {
-        int n = ((dr >> x) & 1);
-        if (n)
-        {
-            string_t disc;
-            disc.push_back(static_cast<wchar_t>('A' + x));
-            disc += L":\\";
-            RecursiveSearchFiles(disc);
-        }
+    GetWinDrives();
+    for (auto& drive : drives_){
+        RecursiveSearchFiles(drive); //D:\\Chlam
     }
 #else
     RecursiveSearchFiles (""); // /home/myroslav/Документи/Repos
@@ -33,6 +38,8 @@ void Indexer::Index(){
 #if defined(_WIN32)
 void Indexer::RecursiveSearchFiles(string_t path) {
     WIN32_FIND_DATAW file_data;
+    SYSTEMTIME sys_time;
+    char_t str_date[20];
     FileInfo curr_file_info;
     path += L"\\*.*";
     HANDLE file = FindFirstFile(path.c_str(), &file_data);
@@ -58,17 +65,20 @@ void Indexer::RecursiveSearchFiles(string_t path) {
                 path.resize(path.size() - wcslen(file_data.cFileName));
             }
             //init fileinfo
+            FileTimeToSystemTime(&file_data.ftLastWriteTime, &sys_time);
+            GetDateFormatW(GetThreadLocale(), DATE_SHORTDATE,  &sys_time, nullptr, str_date, 20) ;
+
             curr_file_info.name = file_data.cFileName;
             curr_file_info.path = path + curr_file_info.name;
-            curr_file_info.date = file_data.ftLastWriteTime.dwLowDateTime;
+            curr_file_info.date = str_date;
             curr_file_info.extension =  !(file_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ?
                                             (curr_file_info.name.substr(curr_file_info.name.find_last_of('.') + 1) == curr_file_info.name ?
                                                 L"Unknown": curr_file_info.name.substr(curr_file_info.name.find_last_of('.') + 1)):
                                         L"DIR";
-            curr_file_info.size = file_data.nFileSizeLow;
+            curr_file_info.size = std::to_wstring(file_data.nFileSizeLow);
 
             ++count_;
-            WriteIndex(curr_file_info, fout_);
+            WriteIndexNode(curr_file_info, fout_);
 
             if(state_ == STOP) return;
             if(state_ == PAUSE) while (state_ == PAUSE) QThread::msleep (100); //need to rework...
@@ -111,10 +121,10 @@ void Indexer::RecursiveSearchFiles(string_t path) {
                                             (curr_file_info.name.substr(curr_file_info.name.find_last_of('.') + 1) == curr_file_info.name ?
                                                 "Unknown": curr_file_info.name.substr(curr_file_info.name.find_last_of('.') + 1)):
                                         "DIR";
-            curr_file_info.size = curr_file_info.extension == "DIR" ? 0 : file_info.st_size;
+            curr_file_info.size = curr_file_info.extension == "DIR" ? "0" : std::to_string(file_info.st_size);
             temp_path.clear ();
             ++count_;
-            WriteIndex(curr_file_info, fout_);
+            WriteIndexNode(curr_file_info, fout_);
 
             if(state_ == STOP) return;
             if(state_ == PAUSE) while (state_ == PAUSE) QThread::msleep (100); //need to rework...
@@ -124,8 +134,7 @@ void Indexer::RecursiveSearchFiles(string_t path) {
 }
 #endif
 
-void Indexer::WriteIndex(FileInfo& node, ofstream_t& fout) const {
-
+void Indexer::WriteIndexNode(FileInfo& node, ofstream_t& fout) const {
     if (fout.is_open()) {
         fout << OBJECT_OPEN_TAG << node.path << OBJECT_CLOSE_TAG_ATTR <<
                 NAME_OPEN_TAG << node.name << NAME_CLOSE_TAG <<
@@ -134,6 +143,117 @@ void Indexer::WriteIndex(FileInfo& node, ofstream_t& fout) const {
                 DATE_OPEN_TAG << node.date << DATE_CLOSE_TAG <<
                 OBJECT_CLOSE_TAG;
     }
+}
+
+void Indexer::ReadIndex() {
+    ifstream_t fin("index.xml");
+    if (fin.is_open()){
+        xml_doc_ = string_t(std::istreambuf_iterator<char_t>(fin), std::istreambuf_iterator<char_t>());
+        if(xml_doc_.size()) {
+            emit Message("Index was read successful");
+        }
+        else {
+            emit Message("Index is empty");
+        }
+        fin.close();
+    }
+    else {
+        emit Message("Index is empty");
+    }
+}
+
+void Indexer::Search(SearchType key, string_t value)  {
+    key_ = key;
+    value_ = value;
+
+    string_t open_tag, close_tag;
+    unsigned res_count(0);
+    size_t open_tag_size = NAME_OPEN_TAG_SIZE;
+    FileInfo f_info;
+
+    switch (key) {
+    case BY_NAME:
+        open_tag = NAME_OPEN_TAG;
+        close_tag = NAME_CLOSE_TAG;
+        open_tag_size = NAME_OPEN_TAG_SIZE;
+        break;
+    case BY_EXTANSION:
+        open_tag = EXT_OPEN_TAG;
+        close_tag = EXT_CLOSE_TAG;
+        open_tag_size = EXT_OPEN_TAG_SIZE;
+        break;
+    case BY_DATE:
+        open_tag = DATE_OPEN_TAG;
+        close_tag = DATE_CLOSE_TAG;
+        open_tag_size = DATE_OPEN_TAG_SIZE;
+        break;
+    case BY_SIZE:
+        open_tag = SIZE_OPEN_TAG;
+        close_tag = SIZE_CLOSE_TAG;
+        open_tag_size = SIZE_OPEN_TAG_SIZE;
+    }
+
+    if(xml_doc_.size()) {
+        size_t pos = 0;
+        do {
+            if ((xml_doc_.find(open_tag, pos) + open_tag_size) > pos) {
+                //if (GetElement(open_tag, close_tag, open_tag_size, pos) == value) {
+                if (xml_doc_.substr(xml_doc_.find(open_tag, pos) + open_tag_size,
+                                  xml_doc_.find(close_tag, pos) - (xml_doc_.find(open_tag, pos) + open_tag_size)) == value || value == "*") {
+
+                    //store FileInfo and send signal to view
+                    f_info.path = xml_doc_.substr(xml_doc_.find(OBJECT_OPEN_TAG, pos) + OBJECT_OPEN_TAG_SIZE,
+                                                 xml_doc_.find(OBJECT_CLOSE_TAG_ATTR, pos) - (xml_doc_.find(OBJECT_OPEN_TAG, pos) + OBJECT_OPEN_TAG_SIZE));
+
+                    f_info.name = xml_doc_.substr(xml_doc_.find(NAME_OPEN_TAG, pos) +  NAME_OPEN_TAG_SIZE,
+                                                 xml_doc_.find(NAME_CLOSE_TAG, pos) - (xml_doc_.find(NAME_OPEN_TAG, pos) + NAME_OPEN_TAG_SIZE));
+
+                    f_info.extension = xml_doc_.substr(xml_doc_.find(EXT_OPEN_TAG, pos) + EXT_OPEN_TAG_SIZE,
+                                                 xml_doc_.find(EXT_CLOSE_TAG, pos) - (xml_doc_.find(EXT_OPEN_TAG, pos) + EXT_OPEN_TAG_SIZE));
+
+                    f_info.size = xml_doc_.substr(xml_doc_.find(SIZE_OPEN_TAG, pos) + SIZE_OPEN_TAG_SIZE,
+                                                 xml_doc_.find(SIZE_CLOSE_TAG, pos) - (xml_doc_.find(SIZE_OPEN_TAG, pos) + SIZE_OPEN_TAG_SIZE));
+
+
+                    f_info.date = xml_doc_.substr(xml_doc_.find(DATE_OPEN_TAG, pos) + DATE_OPEN_TAG_SIZE,
+                                                 xml_doc_.find(DATE_CLOSE_TAG, pos) - (xml_doc_.find(DATE_OPEN_TAG, pos) + DATE_OPEN_TAG_SIZE));
+
+                    //Very slow impl....try #define???-------------------------------------------------------------
+
+                    /*f_info.path = GetElement (OBJECT_OPEN_TAG, OBJECT_CLOSE_TAG_ATTR, OBJECT_OPEN_TAG_SIZE, pos);
+                    f_info.name = GetElement (NAME_OPEN_TAG, NAME_CLOSE_TAG, NAME_OPEN_TAG_SIZE, pos);
+                    f_info.extension = GetElement (EXT_OPEN_TAG, EXT_CLOSE_TAG, EXT_OPEN_TAG_SIZE, pos);
+                    f_info.size = std::stol(GetElement (SIZE_OPEN_TAG, SIZE_CLOSE_TAG, SIZE_OPEN_TAG_SIZE, pos));
+                    f_info.date = std::stol(GetElement (DATE_OPEN_TAG, SIZE_CLOSE_TAG, DATE_OPEN_TAG_SIZE, pos));*/
+                    //----------------------------------------------------------------------------------------
+                    ++res_count;
+                    emit SendInfoToView(f_info);
+                }
+                pos = xml_doc_.find(OBJECT_CLOSE_TAG, pos) + 1;
+            }
+            else {
+                pos = xml_doc_.size();
+            }
+        } while (pos < xml_doc_.size());
+
+    }
+    if(!res_count) {
+        /*emit Message("Searching in filesystem...");
+#if defined(_WIN32)
+        GetWinDrives();
+        for (auto& drive : drives_){
+            RecursiveSearchFiles(drive);
+    }
+#else
+        RecursiveSearchFiles ("");
+#endif*/
+    }
+    emit MessageCount(res_count);
+}
+
+inline string_t Indexer::GetElement(const string_t& open_tag, const string_t& close_tag, const size_t& open_tag_size, const size_t& pos){
+    return xml_doc_.substr(xml_doc_.find(open_tag, pos) + open_tag_size,
+                          xml_doc_.find(close_tag, pos) - (xml_doc_.find(open_tag, pos) + open_tag_size));
 }
 
 unsigned Indexer::GetObjectCount() const {

@@ -2,11 +2,10 @@
 #include "mainwindow.h"
 
 
-MainWindow::MainWindow(Indexer* indx_ref, IndexReader* reader_ptr, QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
+MainWindow::MainWindow(Indexer* indx_ref, QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
 
     indx_ptr_ = indx_ref;
-    reader_ptr_ = reader_ptr;
     type_ = BY_NAME;
 
     QWidget* wgt = new QWidget(this);
@@ -98,14 +97,14 @@ void MainWindow::DefaultTableInit() {
 
 void MainWindow::InitReadIndex() {
     SwitchButtons (DISABLED);
-    ui->s_bar->showMessage ("Index is reading... Please wait...");
+    ui->s_bar->showMessage ("Reading from index... Please wait...");
 
     QThread* read_indx_thread = new QThread;
-    Controller* contr = new Controller(reader_ptr_);
+    Controller* contr = new Controller(indx_ptr_);
     contr->moveToThread (read_indx_thread);
 
     QObject::connect (read_indx_thread, &QThread::started, contr, &Controller::ReadIndex, Qt::UniqueConnection);
-    QObject::connect (reader_ptr_, &IndexReader::Message, this, &MainWindow::ActionsAfterIndexRead, Qt::UniqueConnection);
+    QObject::connect (indx_ptr_, &Indexer::Message, this, &MainWindow::ActionsAfterIndexRead, Qt::UniqueConnection);
     read_indx_thread->start ();
 }
 
@@ -203,7 +202,7 @@ void MainWindow::onActionSearch() {
     DefaultTableInit();
     ui->s_bar->showMessage ("Searching...");
     QThread* search_thread = new QThread;
-    Controller* contr = new Controller(reader_ptr_);
+    Controller* contr = new Controller(indx_ptr_);
     contr->moveToThread (search_thread);
 
 #if defined(_WIN32)
@@ -212,8 +211,8 @@ void MainWindow::onActionSearch() {
     QObject::connect (search_thread, &QThread::started, contr, [=] { contr->onSearchButtonClick(type_, key.toStdString ()); }, Qt::UniqueConnection);
 #endif
 
-    QObject::connect (reader_ptr_, &IndexReader::MessageCount, this, &MainWindow::ActionsAfterSearch, Qt::UniqueConnection);
-    QObject::connect (reader_ptr_, &IndexReader::SendInfoToView, this, &MainWindow::DisplayFileInfo, Qt::UniqueConnection);
+    QObject::connect (indx_ptr_, &Indexer::MessageCount, this, &MainWindow::ActionsAfterSearch, Qt::UniqueConnection);
+    QObject::connect (indx_ptr_, &Indexer::SendInfoToView, this, &MainWindow::DisplayFileInfo, Qt::UniqueConnection);
 
     search_thread->start ();
 }
@@ -239,17 +238,20 @@ void MainWindow::DisplayFileInfo(FileInfo info) {
     table_wgt_->insertRow(table_wgt_->rowCount());
 
 #if defined(_WIN32)
-    table_wgt_->setItem(table_wgt_->rowCount() - 1, 0, new QTableWidgetItem(QString::fromStdWString(info.name)));
-    table_wgt_->setItem(table_wgt_->rowCount() - 1, 1, new QTableWidgetItem(QString::fromStdWString(info.extension)));
-    table_wgt_->setItem(table_wgt_->rowCount() - 1, 3, new QTableWidgetItem(QString::fromStdWString(info.date)));
-    table_wgt_->setItem(table_wgt_->rowCount() - 1, 4, new QTableWidgetItem(QString::fromStdWString(info.path).remove(3,1)));
+    auto from_std_str = &QString::fromStdWString;
 #else
-    table_wgt_->setItem(table_wgt_->rowCount() - 1, 0, new QTableWidgetItem(QString::fromStdString(info.name)));
-    table_wgt_->setItem(table_wgt_->rowCount() - 1, 1, new QTableWidgetItem(QString::fromStdString(info.extension)));
-    table_wgt_->setItem(table_wgt_->rowCount() - 1, 3, new QTableWidgetItem(QString::fromStdString(info.date)));
-    table_wgt_->setItem(table_wgt_->rowCount() - 1, 4, new QTableWidgetItem(QString::fromStdString(info.path)));
+    auto from_std_str = &QString::fromStdString;
 #endif
-    table_wgt_->setItem(table_wgt_->rowCount() - 1, 2, new QTableWidgetItem(QString::number(info.size)));
+
+    table_wgt_->setItem(table_wgt_->rowCount() - 1, 0, new QTableWidgetItem((*from_std_str)(info.name)));
+    table_wgt_->setItem(table_wgt_->rowCount() - 1, 1, new QTableWidgetItem((*from_std_str)(info.extension)));
+    table_wgt_->setItem(table_wgt_->rowCount() - 1, 2, new QTableWidgetItem((*from_std_str)(info.size)));
+    table_wgt_->setItem(table_wgt_->rowCount() - 1, 3, new QTableWidgetItem((*from_std_str)(info.date)));
+#if defined(_WIN32)
+    table_wgt_->setItem(table_wgt_->rowCount() - 1, 4, new QTableWidgetItem((*from_std_str)(info.path).remove(3,1)));
+#else
+    table_wgt_->setItem(table_wgt_->rowCount() - 1, 4, new QTableWidgetItem((*from_std_str)(info.path)));
+#endif
     if (!(table_wgt_->rowCount() % 1000)) {
         ui->s_bar->showMessage("Searching... " + QString::number(table_wgt_->rowCount()) + " objects already found...");
     }
