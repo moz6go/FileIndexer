@@ -6,6 +6,7 @@
 #include <QObject>
 #include <QThread>
 #include <QMutex>
+#include <QWaitCondition>
 #include <QMainWindow>
 #include <QToolBar>
 #include <QComboBox>
@@ -22,32 +23,33 @@
 #include <QStackedWidget>
 #include <QDesktopServices>
 
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <locale>
 #include <string>
 #include <cstring>
 #include <fstream>
 #include <iterator>
 #include <vector>
-#include <chrono>
 
 #if defined(_WIN32)
     #include <Windows.h>
     #include <wchar.h>
 #else
     #include <dirent.h>
-    #include <sys/stat.h>
 #endif
 
 
 #if defined(_WIN32)
     typedef std::wstring string_t;
     typedef std::wofstream ofstream_t;
-    typedef  std::wifstream ifstream_t ;
+    typedef  std::wifstream ifstream_t;
     typedef wchar_t char_t;
     typedef QString (*fromStdStr)(std::wstring);
 
     const int SIZE_WID = 24;
     const string_t INDEX_FILE = L"index.xml";
+    const string_t DIR_EXT = L"DIR";
 
     const string_t HEADER_TAG = L"<?xml version = \"1.0\"?>";
     const string_t REM_TAG = L"<!-- Filesystem index -->";
@@ -74,15 +76,15 @@
     const string_t DATE_OPEN_TAG = L"<date>";
     const string_t DATE_CLOSE_TAG = L"</date>";
     const size_t DATE_OPEN_TAG_SIZE = 6;
-
 #else
     typedef std::string string_t;
     typedef std::ofstream ofstream_t;
-    typedef  std::ifstream ifstream_t ;
+    typedef  std::ifstream ifstream_t;
     typedef char char_t;
 
     const int SIZE_WID = 32;
     const string_t INDEX_FILE = "index.xml";
+    const string_t DIR_EXT = "DIR";
 
     const string_t HEADER_TAG = "<?xml version = \"1.0\"?>";
     const string_t REM_TAG = "<!-- Filesystem index -->";
@@ -116,6 +118,7 @@
 const QString INDEX_IS_EMPTY = "Index is empty";
 const QString INDEX_SUCCESS = "Index was read successful";
 const QString SEARCH_IN_FS = "Searching in filesystem...";
+const QString INDEXING = "Indexing... Please wait...";
 enum SearchType {
     ALL,
     BY_NAME,

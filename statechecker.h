@@ -6,6 +6,7 @@
 class StateChecker : public QObject
 {
 protected:
+    QMutex state_sync_;
     Condition state_;
 public:
     StateChecker();

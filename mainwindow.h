@@ -32,7 +32,7 @@ class MainWindow : public QMainWindow {
     QHBoxLayout* h_main_loyout_;
 
     void BuildToolbar();
-    void DefaultTableInit();
+    void DefaultTableWgtInit();
     void DefaultTreeInit();
     void InitReadIndex();
     void SwitchButtons(Condition proc);
@@ -49,9 +49,12 @@ private slots:
     void ActionsAfterIndexing();
     void ActionsAfterSearch(unsigned count);
     void ShowMessage(QString msg);
+    void ShowCurrDir(QString path, unsigned count);
     void DisplayFileInfo(FileInfo info);
     void setSearchType(QString type);
-    void ShowDir(QTableWidgetItem* item);
+    void CheckSearchLine(QString text);
+    void ShowDir(int row, int col);
+    void ShowDist(int row, int col);
 };
 
 #endif // MAINWINDOW_H

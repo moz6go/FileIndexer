@@ -7,14 +7,16 @@ class Indexer : public StateChecker {
     Q_OBJECT
     unsigned count_;
     unsigned c_dir_;
-    unsigned search_res_count;
+    unsigned search_res_count_;
     SearchType type_;
     string_t key_;
     ofstream_t fout_;
     string_t xml_doc_;
     std::vector<string_t> drives_;
+
     string_t GetElement(const string_t& open_tag, const string_t& close_tag, const size_t& open_tag_size, const size_t& pos);
     void RecursiveSearchFiles(string_t path);
+    bool isObjExist(FileInfo& f_info);
 public:
     Indexer();
     ~Indexer();
@@ -31,7 +33,8 @@ public:
 
 signals:
     void Message(QString mes);
-    void MessageCount(unsigned res_coun);
+    void MessageSearchCount(unsigned count);
+    void CurrDir(QString path, unsigned count);
     void SendInfoToView(FileInfo f_info);
 };
 
