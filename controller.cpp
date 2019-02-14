@@ -11,20 +11,19 @@ void Controller::onStartButtonClick() {
 
 void Controller::onStopButtonClick() {
     indx_ptr_->SetState (STOP);
-    emit finished ();
+    indx_ptr_->Resume();
 }
 
 void Controller::onPauseButtonClick() {
     indx_ptr_->SetState (PAUSE);
-    emit finished ();
-}
-
-void Controller::ReadIndex (){
-    indx_ptr_->ReadIndex ();
-    emit finished ();
 }
 
 void Controller::onSearchButtonClick(SearchType key, string_t value) {
     indx_ptr_->SetState (SEARCH);
     indx_ptr_->Search (key, value);
 }
+
+void Controller::ReadIndex (){
+    indx_ptr_->ReadIndex ();
+}
+

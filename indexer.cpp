@@ -11,9 +11,9 @@ Indexer::~Indexer() {}
 #if defined(_WIN32)
 void Indexer::GetWinDrives() {
     DWORD dr = GetLogicalDrives();
-    for (int x = 0; x <= 'Z'-'A'; x++)  {
+    for (int x = 0; x <= 'Z'-'A'; x++) {
         int n = ((dr >> x) & 1);
-        if (n)  {
+        if (n) {
             string_t curr_drive;
             curr_drive.push_back(static_cast<wchar_t>('A' + x));
             curr_drive += L":\\";
@@ -40,12 +40,130 @@ void Indexer::WriteIndex(){
     fout_.close ();
 }
 
+void Indexer::ReadIndex() {
+    ifstream_t fin("index.xml");
+    if (fin.is_open()) {
+        xml_doc_.clear();
+        xml_doc_ = string_t(std::istreambuf_iterator<char_t>(fin), std::istreambuf_iterator<char_t>());
+        if(xml_doc_.size()) {
+            emit Message(INDEX_SUCCESS);
+        }
+        else {
+            emit Message(INDEX_IS_EMPTY);
+        }
+        fin.close();
+    }
+    else {
+        emit Message(INDEX_IS_EMPTY);
+    }
+}
+
+void Indexer::Search(SearchType type, string_t key)  {
+    key_ = key;
+    type_ = type;
+    search_res_count_ = 0;
+    string_t open_tag, close_tag;
+
+    size_t open_tag_size = NAME_OPEN_TAG_SIZE;
+    FileInfo f_info;
+
+    switch (type) {
+    case BY_NAME:
+        open_tag = NAME_OPEN_TAG;
+        close_tag = NAME_CLOSE_TAG;
+        open_tag_size = NAME_OPEN_TAG_SIZE;
+        break;
+    case BY_EXTENSION:
+        open_tag = EXT_OPEN_TAG;
+        close_tag = EXT_CLOSE_TAG;
+        open_tag_size = EXT_OPEN_TAG_SIZE;
+        break;
+    case BY_DATE:
+        open_tag = DATE_OPEN_TAG;
+        close_tag = DATE_CLOSE_TAG;
+        open_tag_size = DATE_OPEN_TAG_SIZE;
+        break;
+    case BY_SIZE:
+        open_tag = SIZE_OPEN_TAG;
+        close_tag = SIZE_CLOSE_TAG;
+        open_tag_size = SIZE_OPEN_TAG_SIZE;
+        break;
+    case ALL:;
+    }
+
+    if(xml_doc_.size()) {
+        size_t pos = 0;
+        do {
+            if ((xml_doc_.find(open_tag, pos) + open_tag_size) > pos) {
+                if (xml_doc_.substr(xml_doc_.find(open_tag, pos) + open_tag_size,
+                                  xml_doc_.find(close_tag, pos) - (xml_doc_.find(open_tag, pos) + open_tag_size)) == key) {
+
+                    //store FileInfo and send signal to view
+                    f_info.path = xml_doc_.substr(xml_doc_.find(OBJECT_OPEN_TAG, pos) + OBJECT_OPEN_TAG_SIZE,
+                                                 xml_doc_.find(OBJECT_CLOSE_TAG_ATTR, pos) - (xml_doc_.find(OBJECT_OPEN_TAG, pos) + OBJECT_OPEN_TAG_SIZE));
+
+                    f_info.name = xml_doc_.substr(xml_doc_.find(NAME_OPEN_TAG, pos) +  NAME_OPEN_TAG_SIZE,
+                                                 xml_doc_.find(NAME_CLOSE_TAG, pos) - (xml_doc_.find(NAME_OPEN_TAG, pos) + NAME_OPEN_TAG_SIZE));
+
+                    f_info.extension = xml_doc_.substr(xml_doc_.find(EXT_OPEN_TAG, pos) + EXT_OPEN_TAG_SIZE,
+                                                 xml_doc_.find(EXT_CLOSE_TAG, pos) - (xml_doc_.find(EXT_OPEN_TAG, pos) + EXT_OPEN_TAG_SIZE));
+
+                    f_info.size = xml_doc_.substr(xml_doc_.find(SIZE_OPEN_TAG, pos) + SIZE_OPEN_TAG_SIZE,
+                                                 xml_doc_.find(SIZE_CLOSE_TAG, pos) - (xml_doc_.find(SIZE_OPEN_TAG, pos) + SIZE_OPEN_TAG_SIZE));
+
+
+                    f_info.date = xml_doc_.substr(xml_doc_.find(DATE_OPEN_TAG, pos) + DATE_OPEN_TAG_SIZE,
+                                                 xml_doc_.find(DATE_CLOSE_TAG, pos) - (xml_doc_.find(DATE_OPEN_TAG, pos) + DATE_OPEN_TAG_SIZE));
+
+                    if (isObjExist(f_info)){
+                        ++search_res_count_;
+                        emit SendInfoToView(f_info);
+                    }
+                }
+                pos = xml_doc_.find(OBJECT_CLOSE_TAG, pos) + 1;
+            }
+            else {
+                pos = xml_doc_.size();
+            }
+            if(state_ == STOP){
+                emit MessageSearchCount(search_res_count_);
+                return;
+            }
+        } while (pos < xml_doc_.size());
+
+    }
+    if(!search_res_count_) {
+        emit Message(SEARCH_IN_FS);
+#if defined(_WIN32)
+        for (auto& drive : drives_) {
+            RecursiveSearchFiles(drive);
+        }
+#else
+        RecursiveSearchFiles ("");
+#endif
+    }
+    emit MessageSearchCount(search_res_count_);
+}
+
+unsigned Indexer::GetObjectCount() const {
+    return count_;
+}
+
+unsigned Indexer::GetDirCount() const {
+    return c_dir_;
+}
+
+void Indexer::SetCount(unsigned c_dir, unsigned c_obj) {
+    c_dir_ = c_dir;
+    count_ = c_obj;
+}
+// private methods-------------------------------------------------------------------------------------------
 void Indexer::RecursiveSearchFiles(string_t path) {
     char_t str_date[20];
     FileInfo curr_file_info;
 #if defined(_WIN32)
     if(!(count_ % 100)){
-        emit CurrDir(QString::fromStdWString (path), count_);
+        emit CurrDir(QString::fromStdWString (path).remove(3,1), count_);
     }
 
     WIN32_FIND_DATAW file_data;
@@ -134,7 +252,7 @@ void Indexer::RecursiveSearchFiles(string_t path) {
                     ++search_res_count_;
                 }
                 break;
-            case BY_EXTANSION:
+            case BY_EXTENSION:
                 if (key_ == curr_file_info.extension){
                     emit SendInfoToView(curr_file_info);
                     ++search_res_count_;
@@ -154,8 +272,9 @@ void Indexer::RecursiveSearchFiles(string_t path) {
                 }
                 break;
             }
-            if(state_ == STOP) return;
-            if(state_ == PAUSE) while (state_ == PAUSE) QThread::msleep (100);
+
+            if(CheckState() == STOP) return;
+            CheckPause();
 
 #if defined(_WIN32)
         } while (FindNextFile(file, &file_data) != 0);
@@ -179,119 +298,6 @@ void Indexer::WriteIndexNode(FileInfo& node, ofstream_t& fout) const {
     }
 }
 
-void Indexer::ReadIndex() {
-    ifstream_t fin("index.xml");
-    if (fin.is_open()) {
-        xml_doc_.clear();
-        xml_doc_ = string_t(std::istreambuf_iterator<char_t>(fin), std::istreambuf_iterator<char_t>());
-        if(xml_doc_.size()) {
-            emit Message(INDEX_SUCCESS);
-        }
-        else {
-            emit Message(INDEX_IS_EMPTY);
-        }
-        fin.close();
-    }
-    else {
-        emit Message(INDEX_IS_EMPTY);
-    }
-}
-
-void Indexer::Search(SearchType type, string_t key)  {
-    key_ = key;
-    type_ = type;
-    search_res_count_ = 0;
-    string_t open_tag, close_tag;
-
-    size_t open_tag_size = NAME_OPEN_TAG_SIZE;
-    FileInfo f_info;
-
-    switch (type) {
-    case BY_NAME:
-        open_tag = NAME_OPEN_TAG;
-        close_tag = NAME_CLOSE_TAG;
-        open_tag_size = NAME_OPEN_TAG_SIZE;
-        break;
-    case BY_EXTANSION:
-        open_tag = EXT_OPEN_TAG;
-        close_tag = EXT_CLOSE_TAG;
-        open_tag_size = EXT_OPEN_TAG_SIZE;
-        break;
-    case BY_DATE:
-        open_tag = DATE_OPEN_TAG;
-        close_tag = DATE_CLOSE_TAG;
-        open_tag_size = DATE_OPEN_TAG_SIZE;
-        break;
-    case BY_SIZE:
-        open_tag = SIZE_OPEN_TAG;
-        close_tag = SIZE_CLOSE_TAG;
-        open_tag_size = SIZE_OPEN_TAG_SIZE;
-        break;
-    case ALL:;
-    }
-
-    if(xml_doc_.size()) {
-        size_t pos = 0;
-        do {
-            if ((xml_doc_.find(open_tag, pos) + open_tag_size) > pos) {
-                //if (GetElement(open_tag, close_tag, open_tag_size, pos) == value) {
-                if (xml_doc_.substr(xml_doc_.find(open_tag, pos) + open_tag_size,
-                                  xml_doc_.find(close_tag, pos) - (xml_doc_.find(open_tag, pos) + open_tag_size)) == key) {
-
-                    //store FileInfo and send signal to view
-                    f_info.path = xml_doc_.substr(xml_doc_.find(OBJECT_OPEN_TAG, pos) + OBJECT_OPEN_TAG_SIZE,
-                                                 xml_doc_.find(OBJECT_CLOSE_TAG_ATTR, pos) - (xml_doc_.find(OBJECT_OPEN_TAG, pos) + OBJECT_OPEN_TAG_SIZE));
-
-                    f_info.name = xml_doc_.substr(xml_doc_.find(NAME_OPEN_TAG, pos) +  NAME_OPEN_TAG_SIZE,
-                                                 xml_doc_.find(NAME_CLOSE_TAG, pos) - (xml_doc_.find(NAME_OPEN_TAG, pos) + NAME_OPEN_TAG_SIZE));
-
-                    f_info.extension = xml_doc_.substr(xml_doc_.find(EXT_OPEN_TAG, pos) + EXT_OPEN_TAG_SIZE,
-                                                 xml_doc_.find(EXT_CLOSE_TAG, pos) - (xml_doc_.find(EXT_OPEN_TAG, pos) + EXT_OPEN_TAG_SIZE));
-
-                    f_info.size = xml_doc_.substr(xml_doc_.find(SIZE_OPEN_TAG, pos) + SIZE_OPEN_TAG_SIZE,
-                                                 xml_doc_.find(SIZE_CLOSE_TAG, pos) - (xml_doc_.find(SIZE_OPEN_TAG, pos) + SIZE_OPEN_TAG_SIZE));
-
-
-                    f_info.date = xml_doc_.substr(xml_doc_.find(DATE_OPEN_TAG, pos) + DATE_OPEN_TAG_SIZE,
-                                                 xml_doc_.find(DATE_CLOSE_TAG, pos) - (xml_doc_.find(DATE_OPEN_TAG, pos) + DATE_OPEN_TAG_SIZE));
-
-                    //Very slow impl....try #define???-------------------------------------------------------------
-
-                    /*f_info.path = GetElement (OBJECT_OPEN_TAG, OBJECT_CLOSE_TAG_ATTR, OBJECT_OPEN_TAG_SIZE, pos);
-                    f_info.name = GetElement (NAME_OPEN_TAG, NAME_CLOSE_TAG, NAME_OPEN_TAG_SIZE, pos);
-                    f_info.extension = GetElement (EXT_OPEN_TAG, EXT_CLOSE_TAG, EXT_OPEN_TAG_SIZE, pos);
-                    f_info.size = std::stol(GetElement (SIZE_OPEN_TAG, SIZE_CLOSE_TAG, SIZE_OPEN_TAG_SIZE, pos));
-                    f_info.date = std::stol(GetElement (DATE_OPEN_TAG, SIZE_CLOSE_TAG, DATE_OPEN_TAG_SIZE, pos));*/
-                    //----------------------------------------------------------------------------------------
-                    if (isObjExist(f_info)){
-                        ++search_res_count_;
-                        emit SendInfoToView(f_info);
-                    }
-                }
-                pos = xml_doc_.find(OBJECT_CLOSE_TAG, pos) + 1;
-            }
-            else {
-                pos = xml_doc_.size();
-            }
-            if(state_ == STOP){
-                emit MessageSearchCount(search_res_count_);
-                return;
-            }
-        } while (pos < xml_doc_.size());
-
-    }
-    if(!search_res_count_) {
-        emit Message(SEARCH_IN_FS);
-#if defined(_WIN32)
-        for (auto& drive : drives_) {
-            RecursiveSearchFiles(drive);
-        }
-#else
-        RecursiveSearchFiles ("");
-#endif
-    }
-    emit MessageSearchCount(search_res_count_);
-}
 
 bool Indexer::isObjExist(FileInfo& f_info) {
     if(f_info.extension != DIR_EXT){
@@ -307,22 +313,4 @@ bool Indexer::isObjExist(FileInfo& f_info) {
         return stat(f_info.path.c_str(), &info) != 0 ? false : true;
 #endif
     }
-}
-
-inline string_t Indexer::GetElement(const string_t& open_tag, const string_t& close_tag, const size_t& open_tag_size, const size_t& pos){
-    return xml_doc_.substr(xml_doc_.find(open_tag, pos) + open_tag_size,
-                          xml_doc_.find(close_tag, pos) - (xml_doc_.find(open_tag, pos) + open_tag_size));
-}
-
-unsigned Indexer::GetObjectCount() const {
-    return count_;
-}
-
-unsigned Indexer::GetDirCount() const {
-    return c_dir_;
-}
-
-void Indexer::SetCount(unsigned c_dir, unsigned c_obj) {
-    c_dir_ = c_dir;
-    count_ = c_obj;
 }

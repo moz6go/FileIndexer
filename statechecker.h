@@ -6,12 +6,15 @@
 class StateChecker : public QObject
 {
 protected:
-    QMutex state_sync_;
-    Condition state_;
+    QMutex mtx_;
+    QWaitCondition condition_;
+    volatile Condition state_;
 public:
     StateChecker();
-    Condition Check();
+    Condition CheckState();
     void SetState(Condition state);
+    void CheckPause();
+    void Resume();
 };
 
 #endif // STATECHECKER_H

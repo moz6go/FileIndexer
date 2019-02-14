@@ -10,12 +10,12 @@
 #include <QMainWindow>
 #include <QToolBar>
 #include <QComboBox>
-#include <QFileSystemModel>
 #include <QTextEdit>
 #include <QLineEdit>
 #include <QDateEdit>
 #include <QLabel>
 #include <QHeaderView>
+#include <QFileSystemModel>
 #include <QTableWidget>
 #include <QTreeView>
 #include <QSplitter>
@@ -34,7 +34,6 @@
 
 #if defined(_WIN32)
     #include <Windows.h>
-    #include <wchar.h>
 #else
     #include <dirent.h>
 #endif
@@ -43,9 +42,8 @@
 #if defined(_WIN32)
     typedef std::wstring string_t;
     typedef std::wofstream ofstream_t;
-    typedef  std::wifstream ifstream_t;
+    typedef std::wifstream ifstream_t;
     typedef wchar_t char_t;
-    typedef QString (*fromStdStr)(std::wstring);
 
     const int SIZE_WID = 24;
     const string_t INDEX_FILE = L"index.xml";
@@ -113,16 +111,22 @@
     const size_t DATE_OPEN_TAG_SIZE = 6;
 #endif
 
-#define S_TYPE QStringList() << "Name" << "Extension" << "Size" << "Date"
+const QString NAME_STR = "Name";
+const QString EXTENSION_STR = "Extension";
+const QString SIZE_STR = "Size";
+const QString DATE_STR = "Date";
+#define S_TYPE QStringList() << NAME_STR << EXTENSION_STR << SIZE_STR << DATE_STR
+
 
 const QString INDEX_IS_EMPTY = "Index is empty";
 const QString INDEX_SUCCESS = "Index was read successful";
 const QString SEARCH_IN_FS = "Searching in filesystem...";
 const QString INDEXING = "Indexing... Please wait...";
+
 enum SearchType {
     ALL,
     BY_NAME,
-    BY_EXTANSION,
+    BY_EXTENSION,
     BY_DATE,
     BY_SIZE
 };

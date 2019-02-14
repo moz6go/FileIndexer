@@ -1,7 +1,6 @@
 #include "ui_mainwindow.h"
 #include "mainwindow.h"
 
-
 MainWindow::MainWindow(Indexer* indx_ref, QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
 
@@ -18,28 +17,31 @@ MainWindow::MainWindow(Indexer* indx_ref, QWidget *parent) : QMainWindow(parent)
     f_model_ = new QFileSystemModel(this);
     tree_view_ = new QTreeView(this);
     table_wgt_ = new QTableWidget(this);
-    h_main_loyout_ = new QHBoxLayout(this);
-    spliter_ = new QSplitter(Qt::Horizontal, this);
+    h_main_layout_ = new QHBoxLayout();
+    splitter_ = new QSplitter(Qt::Horizontal, this);
     stacked_wgt_ = new QStackedWidget(this);
 
     BuildToolbar ();
     DefaultTableWgtInit ();
     DefaultTreeInit ();
     QObject::connect(table_wgt_, &QTableWidget::cellDoubleClicked, this, &MainWindow::ShowDir);
-    QObject::connect(table_wgt_, &QTableWidget::cellClicked, this, &MainWindow::ShowDist);
+    QObject::connect(table_wgt_, &QTableWidget::cellClicked, this, &MainWindow::ShowAlloc);
 
-    spliter_->addWidget (table_wgt_);
-    spliter_->addWidget (tree_view_);
-    spliter_->setSizes (QList<int>() << 100 << 50);
-    h_main_loyout_->addWidget (spliter_);
+    splitter_->addWidget (table_wgt_);
+    splitter_->addWidget (tree_view_);
+    splitter_->setSizes (QList<int>() << 100 << 50);
+    h_main_layout_->addWidget (splitter_);
 
     InitReadIndex();
 
-    wgt->setLayout (h_main_loyout_);
+    wgt->setLayout (h_main_layout_);
     setMinimumSize(600, 300);
-
 }
 
+MainWindow::~MainWindow() {
+    delete ui;
+}
+// private methods -------------------------------------------------------------------------
 void MainWindow::BuildToolbar() {
     s_line_->setFixedSize (150, SIZE_WID);
     s_line_->setPlaceholderText ("Search...");
@@ -76,14 +78,6 @@ void MainWindow::BuildToolbar() {
     QObject::connect (s_line_, &QLineEdit::textChanged, this, &MainWindow::CheckSearchLine);
 }
 
-void MainWindow::DefaultTreeInit() {
-    f_model_->setRootPath(QDir::rootPath());
-    tree_view_->setModel(f_model_);
-    for(int i = 1; i < 4; ++i) {
-        tree_view_->hideColumn (i);
-    }
-}
-
 void MainWindow::DefaultTableWgtInit() {
     table_wgt_->clear ();
     table_wgt_->setRowCount (0);
@@ -96,6 +90,14 @@ void MainWindow::DefaultTableWgtInit() {
     table_wgt_->setSelectionBehavior(QAbstractItemView::SelectRows);
     header_ = table_wgt_->horizontalHeader();
     header_->setSectionResizeMode(0, QHeaderView::Stretch);
+}
+
+void MainWindow::DefaultTreeInit() {
+    f_model_->setRootPath(QDir::rootPath());
+    tree_view_->setModel(f_model_);
+    for(int i = 1; i < 4; ++i) {
+        tree_view_->hideColumn (i);
+    }
 }
 
 void MainWindow::InitReadIndex() {
@@ -111,8 +113,8 @@ void MainWindow::InitReadIndex() {
     read_indx_thread->start ();
 }
 
-void MainWindow::SwitchButtons(Condition proc) {
-    switch(proc) {
+void MainWindow::SwitchButtons(Condition state) {
+    switch(state) {
     case DEFAULT:
         start_action_->setEnabled (true);
         stop_action_->setDisabled (true);
@@ -159,17 +161,14 @@ void MainWindow::SwitchButtons(Condition proc) {
     }
 }
 
-MainWindow::~MainWindow() {
-    delete ui;
-}
-
+// public methods ------------------------------------------------------------------------------------------
 void MainWindow::onActionStart() {
     SwitchButtons(START);
     DefaultTableWgtInit();
     ui->s_bar->showMessage (INDEXING);
-
-    if (indx_ptr_->Check () == PAUSE){
+    if (indx_ptr_->CheckState () == PAUSE){
         indx_ptr_->SetState (START);
+        indx_ptr_->Resume();
     }
     else{
         QThread* start_thread = new QThread;
@@ -185,15 +184,12 @@ void MainWindow::onActionStart() {
 
 void MainWindow::onActionStop() {
     SwitchButtons(STOP);
-
+    ui->s_bar->showMessage("Stopped...");
     QThread* stop_thread = new QThread;
     Controller* contr = new Controller(indx_ptr_);
     contr->moveToThread (stop_thread);
 
     QObject::connect(stop_thread, &QThread::started, contr, &Controller::onStopButtonClick, Qt::UniqueConnection);
-    if (indx_ptr_->Check() == START) {
-        QObject::connect(contr, &Controller::finished, this, &MainWindow::ActionsAfterIndexing, Qt::UniqueConnection);
-    }
 
     stop_thread->start ();
 }
@@ -231,20 +227,8 @@ void MainWindow::onActionSearch() {
     search_thread->start ();
 }
 
-void MainWindow::ShowMessage(QString msg){
-    if (msg == INDEX_IS_EMPTY || msg == INDEX_SUCCESS) {
-        SwitchButtons(DEFAULT);
-    }
-    ui->s_bar->showMessage (msg);
-}
-
-void MainWindow::ShowCurrDir(QString path, unsigned count) {
-    ui->s_bar->showMessage (INDEXING + " " + QString::number (count) + " objects indexed, Current dir: " + path);
-}
-
 void MainWindow::ActionsAfterIndexing() {
     InitReadIndex();
-    SwitchButtons(DEFAULT);
     ui->s_bar->showMessage ("Count of dirs: " + QString::number(indx_ptr_->GetDirCount ()) +
                             ",    Count of objects: " + QString::number (indx_ptr_->GetObjectCount ()));
 }
@@ -254,9 +238,20 @@ void MainWindow::ActionsAfterSearch (unsigned count){
     ui->s_bar->showMessage ("Find " + QString::number(count) + " objects");
 }
 
+void MainWindow::ShowMessage(QString msg){
+    if (msg == INDEX_IS_EMPTY || msg == INDEX_SUCCESS) {
+        SwitchButtons(DEFAULT);
+    }
+    ui->s_bar->showMessage (msg);
+}
+
+void MainWindow::ShowCurrDir(QString path, unsigned count) {
+    ui->s_bar->showMessage (INDEXING + " | " + QString::number (count) + " objects indexed | Current dir: " + path);
+}
+
 void MainWindow::DisplayFileInfo(FileInfo info) {  
 #if defined(_WIN32)
-    auto from_std_str = &QString::fromWStdString;
+    auto from_std_str = &QString::fromStdWString;
     QString path = (*from_std_str)(info.path).remove(3,1);
 #else
     auto from_std_str = &QString::fromStdString;
@@ -274,22 +269,22 @@ void MainWindow::DisplayFileInfo(FileInfo info) {
 }
 
 void MainWindow::setSearchType(QString type) {
-    if(type == "Name") {
+    if(type == NAME_STR) {
         type_ = BY_NAME;
         stacked_wgt_->setCurrentWidget (s_line_);
         CheckSearchLine (s_line_->text ());
     }
-    if(type == "Extension"){
-        type_ = BY_EXTANSION;
+    if(type == EXTENSION_STR){
+        type_ = BY_EXTENSION;
         stacked_wgt_->setCurrentWidget (s_line_);
         CheckSearchLine (s_line_->text ());
     }
-    if(type == "Size"){
+    if(type == SIZE_STR){
         type_ = BY_SIZE;
         stacked_wgt_->setCurrentWidget (s_line_);
         CheckSearchLine (s_line_->text ());
     }
-    if(type == "Date"){
+    if(type == DATE_STR){
         type_ = BY_DATE;
         stacked_wgt_->setCurrentWidget (s_date_);
         search_action_->setEnabled (true);
@@ -309,7 +304,7 @@ void MainWindow::ShowDir(int row, int col) {
     QDesktopServices::openUrl (QUrl::fromLocalFile (table_wgt_->item(row, 4)->text ()));
 }
 
-void MainWindow::ShowDist(int row, int col) {
+void MainWindow::ShowAlloc(int row, int col) {
     QModelIndex indx = f_model_->index (table_wgt_->item(row, 4)->text ());
     tree_view_->setCurrentIndex (indx);
 }

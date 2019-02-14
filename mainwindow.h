@@ -28,23 +28,22 @@ class MainWindow : public QMainWindow {
     QTableWidget* table_wgt_;
     QHeaderView* header_;
     QTreeView* tree_view_;
-    QSplitter* spliter_;
-    QHBoxLayout* h_main_loyout_;
+    QSplitter* splitter_;
+    QHBoxLayout* h_main_layout_;
 
     void BuildToolbar();
     void DefaultTableWgtInit();
     void DefaultTreeInit();
     void InitReadIndex();
-    void SwitchButtons(Condition proc);
-    void SearchMode();
+    void SwitchButtons(Condition state);
 public:
     MainWindow(Indexer* indx_ref, QWidget *parent = nullptr);
     ~MainWindow();
 
 private slots:
+    void onActionStart();
     void onActionStop();
     void onActionPause();
-    void onActionStart();
     void onActionSearch();
     void ActionsAfterIndexing();
     void ActionsAfterSearch(unsigned count);
@@ -54,7 +53,7 @@ private slots:
     void setSearchType(QString type);
     void CheckSearchLine(QString text);
     void ShowDir(int row, int col);
-    void ShowDist(int row, int col);
+    void ShowAlloc(int row, int col);
 };
 
 #endif // MAINWINDOW_H

@@ -14,16 +14,15 @@ class Indexer : public StateChecker {
     string_t xml_doc_;
     std::vector<string_t> drives_;
 
-    string_t GetElement(const string_t& open_tag, const string_t& close_tag, const size_t& open_tag_size, const size_t& pos);
     void RecursiveSearchFiles(string_t path);
+    void WriteIndexNode(FileInfo& node, ofstream_t& fout) const;
     bool isObjExist(FileInfo& f_info);
-public:
-    Indexer();
-    ~Indexer();
 #if defined(_WIN32)
     void GetWinDrives();
 #endif
-    void WriteIndexNode(FileInfo& node, ofstream_t& fout) const;
+public:
+    Indexer();
+    ~Indexer();
     void WriteIndex();
     void ReadIndex();
     void Search(SearchType type, string_t key);

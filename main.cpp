@@ -5,7 +5,7 @@ int main(int argc, char *argv[])
 #if defined(_WIN32)
     std::locale::global(std::locale(""));
 #endif
-    qRegisterMetaType<FileInfo>("FileInfo"); // for QObject::connect new syntax
+    qRegisterMetaType<FileInfo>("FileInfo");
     QApplication a(argc, argv);
     Indexer indx;
     MainWindow w(&indx);
